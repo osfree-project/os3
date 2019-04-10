@@ -142,6 +142,10 @@ set boot_modules {
   compat.lib.so
   memmgr.lib.so
   handle.lib.so
+  os2srv.lib.so
+  os2fs.lib.so
+  os2exec.lib.so
+  os2app.lib.so
   lx.ixf
   ne.ixf
   os2fs

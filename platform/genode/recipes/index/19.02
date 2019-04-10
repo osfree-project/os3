@@ -2,7 +2,7 @@
 <index>
 
   <index name="osFree">
-    <pkg path="valerius/pkg/os2/2019-03-16-a" info="OS/2 personality prototype"/>
+    <pkg path="valerius/pkg/os2/2019-03-21-c" info="OS/2 personality prototype"/>
   </index>
 
   <index name="Demos">
@@ -11,7 +11,8 @@
 
   <index name="Games">
     <pkg path="valerius/pkg/chocolate-doom/2019-03-13" info="Chocolate DOOM(tm)"/>
-    <pkg path="valerius/pkg/supertux/2019-03-16" info="Supertux"/>
+    <pkg path="valerius/pkg/numptyphysics/2019-03-21" info="Numpty Physics"/>
+    <pkg path="valerius/pkg/supertux/2019-03-21-d" info="Supertux"/>
     <pkg path="valerius/pkg/tyrian/2019-03-13" info="OpenTyrian"/>
   </index>
 

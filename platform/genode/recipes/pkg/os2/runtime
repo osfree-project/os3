@@ -8,9 +8,6 @@
 		<rom label="os2.tar"/>
 		<rom label="config.sys"/>
 		<rom label="kal.map"/>
-		<rom label="core"/>
-		<rom label="init"/>
-		<rom label="timer"/>
 		<rom label="tar_rom"/>
 		<rom label="ld.lib.so"/>
 		<rom label="libc.lib.so"/>

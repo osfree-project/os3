@@ -249,7 +249,7 @@ KalFSCtl (PVOID pData,
 }
 
 
-APIRET CDECL
+APIRET CDECL __attribute__((hot))
 KalRead (HFILE hFile, PVOID pBuffer,
          ULONG cbRead, PULONG pcbActual)
 {
