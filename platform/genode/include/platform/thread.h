@@ -11,6 +11,7 @@ typedef void * l4_os3_thread_t;
 
 #define THREAD_SYNC  1
 #define THREAD_ASYNC 2
+#define THREAD_MAP   4
 
 #ifdef __cplusplus
   }

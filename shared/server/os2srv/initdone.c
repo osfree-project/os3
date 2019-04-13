@@ -71,6 +71,7 @@ struct options
 */
 int init(struct options *opts)
 {
+  l4_os3_thread_t thread;
   void     *addr;           // Pointer to CONFIG.SYS in memory
   unsigned long size;       // Size of CONFIG.SYS in memory
   int rc;                   // Return code
@@ -121,7 +122,7 @@ int init(struct options *opts)
   PrcInit();
 
   // Perform the system initialization
-  ThreadCreate((void *)sysinit, (void *)&options, THREAD_ASYNC);
+  ThreadCreate(&thread, (void *)sysinit, (void *)&options, THREAD_ASYNC);
 
   return rc;
 }

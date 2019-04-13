@@ -68,6 +68,8 @@ l4_os3_thread_t fprov_id;
 
 extern l4_os3_thread_t thread;
 
+l4_os3_thread_t th;
+
 void usage(void);
 void server_loop(void);
 
@@ -131,14 +133,14 @@ void event_thread(void)
   }
 }
 
-void server_loop(void)
+/* void server_loop(void)
 {
   CORBA_Server_Environment env = dice_default_server_environment;
   // server loop
   env.malloc = (dice_malloc_func)malloc;
   env.free = (dice_free_func)free;
   os2app_server_loop(&env);
-}
+} */
 
 void reserve_regions(void)
 {
@@ -196,6 +198,7 @@ void parse_options(int argc, char *argv[], struct options *opts)
 
 int main (int argc, char *argv[])
 {
+  CORBA_Server_Environment env = dice_default_server_environment;
   struct options opts = {0};
   int rc;
 
@@ -224,17 +227,27 @@ int main (int argc, char *argv[])
   l4env_infopage->memserv_id = dsm;
 
   // start server loop
-  thread = ThreadCreate((void *)server_loop, 0, THREAD_ASYNC);
+  //ThreadCreate(&thread, (void *)server_loop, 0, THREAD_ASYNC);
 
   if (opts.use_events)
   {
     // start events thread
-    ThreadCreate((void *)event_thread, 0, THREAD_ASYNC);
+    ThreadCreate(&th, (void *)event_thread, 0, THREAD_ASYNC);
     io_log("event thread started\n");
   }
 
   /* start platform-independent init */
-  rc = init(&opts);
+  //if ( (rc = init(&opts)) )
+  //{
+    //return rc;
+  //}
+
+  ThreadCreate(&th, (void *)init, &opts, THREAD_ASYNC);
+
+  // server loop
+  env.malloc = (dice_malloc_func)malloc;
+  env.free = (dice_free_func)free;
+  os2app_server_loop(&env);
 
   /* destruct */
   done();

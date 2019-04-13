@@ -17,6 +17,9 @@
 /* os2fs server includes */
 #include <os2fs-server.h>
 
+/* l4thread default stack size */
+////const l4_size_t l4thread_stack_size = 0x20000;
+
 extern l4_threadid_t os2srv;
 extern l4_os3_thread_t mythread;
 
@@ -118,10 +121,11 @@ void parse_options(int argc, char **argv, struct options *opts)
 }
 
 l4_os3_thread_t thread;
+l4_os3_thread_t th;
 
 int main(int argc, char **argv)
 {
-  CORBA_Environment env = dice_default_environment;
+  CORBA_Server_Environment env = dice_default_server_environment;
   struct options opts = {0};
   int rc;
 
@@ -138,7 +142,7 @@ int main(int argc, char **argv)
   // start events thread
   if (opts.use_events)
   {
-    ThreadCreate((void *)event_thread, 0, THREAD_ASYNC);
+    ThreadCreate(&th, (void *)event_thread, 0, THREAD_ASYNC);
     io_log("event thread started\n");
   }
 

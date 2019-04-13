@@ -2,12 +2,10 @@ include $(REP_DIR)/mk/osfree.mk
 
 TARGET = os2app
 CC_CXX_WARN_STRICT =
-SRC_CC = main.cc kal/thread.cc
-SRC_C  = initdone.c api/api.c \
+SRC_CC = main.cc kal/thread2.cc
+SRC_C  = initdone.c api/api.c kal/thread.c \
          kal/util.c kal/start.c kal/kal.c kal/dl.c
 # disable dead code elimination
-C_OPT  += -fno-dce -fno-dse -fno-tree-dce -fno-tree-dse
-CC_OPT += -fno-dce -fno-dse -fno-tree-dce -fno-tree-dse
 LIBS = base libc compat os2srv os2fs os2exec
 
 ifeq ($(filter-out $(SPECS),x86_32),)

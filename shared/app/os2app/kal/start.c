@@ -89,15 +89,15 @@ l4_os3_thread_t thread;
 struct param param;
 APIRET rc;
 
+unsigned long hmod;
+ULONG curdisk, map;
+unsigned long ulActual;
+/* Error info from LoadModule */
+char *p = buf;
+int i;
+
 APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError)
 {
-  /* Error info from LoadModule */
-  unsigned long hmod;
-  ULONG curdisk, map;
-  unsigned long ulActual;
-  char *p = buf;
-  int i;
-
   /* Load the LX executable */
   rc = KalPvtLoadModule(pszLoadError, &cbLoadError,
                         name, &s, &hmod);

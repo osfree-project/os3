@@ -12,6 +12,7 @@ LockDone T
 LockInit T
 LockLock T
 LockUnlock T
+RegAreaAttach T
 RegAreaAttachToRegion T
 RegAreaRelease T
 RegAreaReleaseAddr T
@@ -38,13 +39,18 @@ ThreadCreateLong T
 ThreadEqual T
 ThreadExit T
 ThreadKill T
+ThreadMyself T
 ThreadResume T
 ThreadSleep T
 ThreadSuspend T
 ThreadWait T
+_Z11lookup_nodePv T
+_Z8add_nodePvmmS_ T
+_Z8del_nodePv T
 attach_ds T
 attach_ds_area T
 attach_ds_reg T
+call B 480
 cfg_Getenv T
 cfg_Getopt T
 error T
@@ -57,12 +63,15 @@ get_name T
 io_close_file T
 io_load_file T
 io_log T
+ixf B 480
 l4os3_errtostr T
 options B 480
-options_list D 456
+root B 8
+run B 480
 runserver B 480
 segment_gdt_get_entry_offset T
 segment_gdt_set T
+set B 2400
 skiplist D 8
 strupr T
 type D 160

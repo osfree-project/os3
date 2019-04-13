@@ -60,29 +60,34 @@ TaskExit(int result)
 }
 
 extern "C" l4_os3_thread_t
-ThreadCreate(ThreadFunc fn, void *data, ULONG flags)
+ThreadMyself(void)
+{
+    Genode::Thread *thread = Genode::Thread::myself();
+    return (l4_os3_thread_t)thread;
+}
+
+extern "C" APIRET
+ThreadCreate(l4_os3_thread_t *thread, ThreadFunc fn, void *data, ULONG flags)
 {
     Genode::Allocator &alloc = genode_alloc();
     Genode::Env &env = genode_env();
-    l4_os3_thread_t thread;
 
-    thread = (l4_os3_thread_t)new (alloc) OS2::Thread(env, fn, data, flags);
-    return thread;
+    *thread = (l4_os3_thread_t)new (alloc) OS2::Thread(env, fn, data, flags);
+    return NO_ERROR;
 }
 
-extern "C" l4_os3_thread_t
-ThreadCreateLong(ThreadFunc fn, void *data, ULONG flags,
+extern "C" APIRET
+ThreadCreateLong(l4_os3_thread_t *thread, ThreadFunc fn, void *data, ULONG flags,
                  const char *name, ULONG stacksize)
 {
     Genode::Allocator &alloc = genode_alloc();
     Genode::Env &env = genode_env();
-    l4_os3_thread_t thread;
 
-    thread = (l4_os3_thread_t)new (alloc) OS2::Thread(env, fn, data,
+    *thread = (l4_os3_thread_t)new (alloc) OS2::Thread(env, fn, data,
                                                       flags, name,
                                                       stacksize);
 
-    return thread;
+    return NO_ERROR;
 }
 
 extern "C" void
@@ -94,24 +99,28 @@ ThreadKill(l4_os3_thread_t native)
 }
 
 extern "C" void
-ThreadSuspend(l4_os3_thread_t native)
+ThreadSuspend(l4_os3_thread_t native, ULONG *eip, ULONG *esp)
 {
     Genode::Thread *thread = (Genode::Thread *)native;
     Genode::Cpu_thread_client client(thread->cap());
     client.pause();
+    *eip = client.state().ip;
+    *esp = client.state().sp;
 }
 
 extern "C" void
-ThreadResume(l4_os3_thread_t native)
+ThreadResume(l4_os3_thread_t native, ULONG *eip, ULONG *esp)
 {
     Genode::Thread *thread = (Genode::Thread *)native;
     Genode::Cpu_thread_client client(thread->cap());
+    //client.start(esp, eip);
     client.resume();
 }
 
-extern "C" void
+extern "C" l4_os3_thread_t
 ThreadWait(l4_os3_thread_t native)
 {
     Genode::Thread *thread = (Genode::Thread *)native;
     thread->join();
+    return thread;
 }

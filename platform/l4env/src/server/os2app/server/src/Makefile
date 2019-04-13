@@ -10,7 +10,7 @@ SYSTEMS		= x86-l4v2 # arm-l4v2 amd64-l4v2
 SRC_C		= main.c rpc.c startup.c \
                   api.c initdone.c \
                   kal/kal.c kal/start.c kal/util.c \
-                  kal/thread.c kal/dl.c
+                  kal/thread.c kal/thread2.c kal/dl.c
 
 ifeq ($(ARCH),x86)
 

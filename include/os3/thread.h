@@ -29,18 +29,20 @@ void ThreadExit(void);
 
 void TaskExit(int result);
 
-l4_os3_thread_t ThreadCreate(ThreadFunc fn, void *data, ULONG flags);
+l4_os3_thread_t ThreadMyself(void);
 
-l4_os3_thread_t ThreadCreateLong(ThreadFunc fn, void *data, ULONG flags,
+APIRET ThreadCreate(l4_os3_thread_t *thread, ThreadFunc fn, void *data, ULONG flags);
+
+APIRET ThreadCreateLong(l4_os3_thread_t *thread, ThreadFunc fn, void *data, ULONG flags,
                                  const char *name, ULONG stacksize);
 
 void ThreadKill(l4_os3_thread_t native);
 
-void ThreadSuspend(l4_os3_thread_t native);
+void ThreadSuspend(l4_os3_thread_t native, ULONG *eip, ULONG *esp);
 
-void ThreadResume(l4_os3_thread_t native);
+void ThreadResume(l4_os3_thread_t native, ULONG *eip, ULONG *esp);
 
-void ThreadWait(l4_os3_thread_t native);
+l4_os3_thread_t ThreadWait(l4_os3_thread_t native);
 
 #ifdef __cplusplus
   }

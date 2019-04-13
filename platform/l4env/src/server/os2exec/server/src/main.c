@@ -213,7 +213,8 @@ int main (int argc, char *argv[])
   if (opts.use_events)
   {
     // start events thread
-    ThreadCreate((void *)event_thread, 0, THREAD_ASYNC);
+    l4_os3_thread_t th;
+    ThreadCreate(&th, (void *)event_thread, 0, THREAD_ASYNC);
     io_log("event thread started\n");
   }
 

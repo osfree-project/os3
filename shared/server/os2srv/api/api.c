@@ -198,6 +198,7 @@ APIRET CPExecPgm(l4_os3_thread_t thread,
   struct t_os2process *proc;
   struct DosExecPgm_params *parm;
   char *arg, *env;
+  l4_os3_thread_t th;
 
   /* caller t_os2process structure */
   proc = PrcGetProcNative(thread);
@@ -238,7 +239,7 @@ APIRET CPExecPgm(l4_os3_thread_t thread,
 
   /* start DosExecPgm worker thread */
   //l4thread_create((void *)CPExecPgmWorker, (void *)parm, L4THREAD_CREATE_ASYNC);
-  ThreadCreate((void *)CPExecPgmWorker, (void *)parm, THREAD_ASYNC);
+  ThreadCreate(&th, (void *)CPExecPgmWorker, (void *)parm, THREAD_ASYNC);
 
   return 0;
 }
