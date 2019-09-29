@@ -63,6 +63,9 @@ kernel $(A)/bootstrap -serial
 modaddr 0x02000000
 module $(B)/fiasco $(FIASCOARGS)
 module $(B)/sigma0
+# Note that maximal modules number is 44
+# it is a 'simple_file_server' and 'bootstrap' limitation
+# also, GRUB has a limitation of max 99 modules in a boot script
 module $(B)/roottask -symbols -lines \
   task modname 'simple_file_server' attached 44 modules \
   task modname 'loader' allow_cli

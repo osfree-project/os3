@@ -9,19 +9,21 @@ cdefs += -I$(OS3_DIR)/include
 CFLAGS += $(cdefs)
 O=$(BLD_DIR)
 
+SYMLINKS = $(OS3_DIR)/platform/l4re/os2 \
+	  $(BLD_DIR)/bin/$(arch)/$(l4api)/os2 \
+	  $(BLD_DIR)/conf                      \
+	  $(BLD_DIR)/bin/$(arch)/$(l4api)/fiasco \
+	  $(BLD_DIR)/bin/$(arch)/$(l4api)/l4con
+
 .DEFAULT_GOAL := all
 
 run: symlinks
 	$(MAKE) -C $(L4DIR) O=$(BLD_DIR) \
 		MODULES_LIST=$(BLD_DIR)/conf/modules.list \
-		QEMU_OPTIONS="-m $(MEM) -display vnc=$(DISPLAY) \
+		QEMU_OPTIONS="-m $(MEM) $(DISP) \
 		$(GDB) $(ACCEL) -serial stdio" qemu
 
-symlinks: $(OS3_DIR)/platform/l4re/os2 \
-	  $(BLD_DIR)/bin/$(arch)/$(l4api)/os2 \
-	  $(BLD_DIR)/conf                      \
-	  $(BLD_DIR)/bin/$(arch)/$(l4api)/fiasco \
-	  $(BLD_DIR)/bin/$(arch)/$(l4api)/l4con
+symlinks: $(SYMLINKS)
 
 $(OS3_DIR)/platform/l4re/os2: $(OS3_DIR)/filesys/os2
 	@ln -sf $< $@

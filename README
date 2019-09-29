@@ -5,7 +5,8 @@ You should checkout osFree sources first:
 
 # mkdir osfree
 # cd osfree
-# svn co https://svn.code.sf.net/p/osfree/code/trunk .
+# git clone https://github.com/osfree-project/osfree/ .
+# git submodule update --init
 
 create a symlink for osfree/OS2/Server (under the "os3" name):
 

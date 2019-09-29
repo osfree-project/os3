@@ -3,22 +3,29 @@
 # map required directories into chroot
 #
 # Use:
-# "./mountall.sh mount" to mount all dirs
-# "./mountall.sh unmount" to unmount
+# "./mountall.sh mount <main dir>" to mount all dirs
+# "./mountall.sh unmount <main dir>" to unmount them
+#
+# parameters:
+#
+# $1: mount|unmount
+# $2: <main dir>
 #
 # Add/remove extra dirs as needed:
-dirs="/dev /dev/shm /dev/pts /proc /sys /tmp /mnt /mnt/os2l /mnt/os2l/src/l4"
+dirs="/dev /dev/shm /dev/pts /proc /sys /tmp /mnt /home $2"
 
 case $1 in
 mount)
-  for i in $dirs; do
-      mount -o bind $i .$i
+  # mount all subdirs in order
+  for dir in $dirs; do
+      mount -o bind $dir .$dir
   done
   ;;
 
 unmount)
-  for i in $dirs; do
-      umount -R -f .$i
+  # unmount all subdirs in the reverse order
+  for dir in `echo $dirs | rev`; do
+      umount -R -f .`echo $dir | rev`
   done
   ;;
 esac
