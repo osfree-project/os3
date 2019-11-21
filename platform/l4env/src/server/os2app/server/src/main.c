@@ -81,6 +81,7 @@ struct options
 {
   char  use_events;
   char  *progname;
+  char  *term;
 };
 
 int init(struct options *opts);
@@ -170,7 +171,8 @@ void parse_options(int argc, char *argv[], struct options *opts)
 
   const struct option long_options[] =
                 {
-                { "events",      no_argument, NULL, 'e'},
+                { "events",      no_argument, NULL, 'e' },
+                { "term",        1,           NULL, 't' },
                 { 0, 0, 0, 0}
                 };
 
@@ -184,6 +186,11 @@ void parse_options(int argc, char *argv[], struct options *opts)
       case 'e':
         io_log("using events server\n");
         opts->use_events = 1;
+        break;
+
+      case 't':
+        opts->term = optarg;
+        io_log("using %s as a terminal\n", optarg);
         break;
 
       default:

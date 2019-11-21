@@ -74,7 +74,12 @@ int pathconv(char **converted, char *fname)
     char *newfilename;
     char *newdirectory;
 
+    //io_log("q: pathconv()\n");
+    //io_log("q: fn=%s\n", fname);
+
     drv = tolower(get_drv(fname));
+
+    //io_log("q: drv=%c\n", drv);
 
     if(drv == '\0')
     {
@@ -83,6 +88,8 @@ int pathconv(char **converted, char *fname)
 
     directory = get_directory(fname);
 
+    //io_log("q: directory=%s\n", directory);
+
     if (! directory)
     {
         return 1;
@@ -90,24 +97,41 @@ int pathconv(char **converted, char *fname)
 
     name = get_name(fname);
 
+    //io_log("q: name=%s\n", name);
+
     DosNameConversion(directory);
     DosNameConversion(name);
 
-    // @todo release memory allocated here by malloc
-    if (drv >= 'c' && drv <= 'z')
+    //io_log("q: directory=%s\n", directory);
+    //io_log("q: name=%s\n", name);
+
+    if (! strcmp(directory, "/dev/") ||
+        ! strcmp(directory, "/pipe/") )
     {
-        fsrv = FSRouter_route(&fsrouter, drv);
-
-        newdirectory=malloc(strlen(fsrv->mountpoint)+
-                            strlen(directory)+1);
-
-        strcpy(newdirectory, fsrv->mountpoint);
-        newdirectory=strcat(newdirectory, directory);
+        newdirectory = directory;
     }
     else
     {
-        newdirectory = malloc(strlen(directory) + 1);
-        strcpy(newdirectory, directory);
+        // @todo release memory allocated here by malloc
+        if (drv >= 'c' && drv <= 'z')
+        {
+            fsrv = FSRouter_route(&fsrouter, drv);
+
+            //io_log("q: xxx");
+            //io_log("q: fsrv=%p\n", fsrv);
+
+            newdirectory=malloc(strlen(fsrv->mountpoint)+
+                                strlen(directory)+1);
+
+            strcpy(newdirectory, fsrv->mountpoint);
+            newdirectory=strcat(newdirectory, directory);
+        }
+        else
+        {
+            //io_log("q: yyy");
+            newdirectory = malloc(strlen(directory) + 1);
+            strcpy(newdirectory, directory);
+        }
     }
 
     newfilename=malloc(strlen(newdirectory)+
@@ -115,6 +139,7 @@ int pathconv(char **converted, char *fname)
 
     strcpy(newfilename, newdirectory);
     newfilename=strcat(newfilename, name);
+    //io_log("q: newfilename=%s\n", newfilename);
     *converted = newfilename;
 
     return 0;
@@ -399,7 +424,12 @@ APIRET FSOpenL(PSZ pszFileName,
     if (! stat(newfilename, &st))
         file_existed = 1;
 
+    io_log("0: newfilename=%s\n", newfilename);
+
     handle = open(newfilename, mode);
+
+    io_log("1: handle=%u\n", handle);
+    io_log("1: errno=%u\n", errno);
 
     if (handle == -1)
     {
@@ -411,6 +441,8 @@ APIRET FSOpenL(PSZ pszFileName,
 
         return ERROR_ACCESS_DENIED;
     }
+
+    io_log("2: handle=%u\n", handle);
 
     if (fsOpenFlags & OPEN_ACTION_FAIL_IF_EXISTS)
     {
@@ -448,6 +480,8 @@ APIRET FSOpenL(PSZ pszFileName,
         fileroot = h;
 
     *phFile = (HFILE)handle;
+
+    io_log("*** FSOpenL: handle=%u\n", handle);
 
     return NO_ERROR;
 }

@@ -94,7 +94,7 @@ int LXLoadHeader(struct LX_module * lx_mod)
 {
   char exe_sig[2];
   struct e32_exe * lx_e32_exe;
-  int lx_module_header_offset=0;
+  unsigned long lx_module_header_offset=0;
   struct exe hdr;
 
   lx_mod->lx_fseek(lx_mod, 0, SEEK_SET);
@@ -114,6 +114,7 @@ int LXLoadHeader(struct LX_module * lx_mod)
     lx_mod->lx_fread(&exe_sig, 1, sizeof(exe_sig), lx_mod);
 
     lx_mod->offs_lx_head = lx_module_header_offset;
+    io_log("@@@: lx_module_header_offset1=%x\n", lx_module_header_offset);
     if (options.debugixfmgr)
     {
       lx_mod->lx_fseek(lx_mod, 0, SEEK_SET);
@@ -129,6 +130,7 @@ int LXLoadHeader(struct LX_module * lx_mod)
     //io_log("LX header offset: %d \n", lx_module_header_offset);
     lx_module_header_offset = 0;
     lx_mod->offs_lx_head = lx_module_header_offset;
+    io_log("@@@: lx_module_header_offset2=%x\n", lx_module_header_offset);
   }
 
   if((exe_sig[0] == 'L') && (exe_sig[1] == 'X')) {
@@ -144,6 +146,7 @@ int LXLoadHeader(struct LX_module * lx_mod)
     lx_mod->lx_fread(lx_e32_exe, sizeof(struct e32_exe), 1, lx_mod);
 
     lx_mod->lx_head_e32_exe = lx_e32_exe;
+    io_log("@@@: lx_head_e32_exe=%x\n", lx_e32_exe);
 
     if (options.debugixfmgr)
     {

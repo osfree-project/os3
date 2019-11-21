@@ -6,6 +6,7 @@
 #include <os3/stacksw.h>
 #include <os3/loader.h>
 #include <os3/dataspace.h>
+#include <os3/handlemgr.h>
 #include <os3/segment.h>
 #include <os3/thread.h>
 #include <os3/types.h>
@@ -37,6 +38,8 @@ extern unsigned short tib_sel;
 extern vmdata_t *areas_list;
 
 extern ULONG rcCode;
+
+VOID CDECL Exit(ULONG action, ULONG result);
 
 USHORT tramp(PCHAR argv, PCHAR envp, ULONG hmod, USHORT tib_sel, void *eip);
 
@@ -75,8 +78,11 @@ trampoline(struct param *param)
      and set current one to OS/2 app stack */
   STKINIT(s.sp - 0x10)
 
+  io_log("entry point: %x\n", param->eip);
+  io_log("stack top: %x\n", param->esp);
+
   /* We have changed the stack so it now points to our LX image. */
-  //enter_kdebug("debug");
+  enter_kdebug("debug");
   old_sel = tramp(argv, envp, hmod, tib_sel, param->eip);
 
   STKOUT
@@ -84,11 +90,31 @@ trampoline(struct param *param)
   return 0;
 }
 
+/* Job File Table (local file handles) */
+extern HANDLE_TABLE jft;
+
+/* JFT entry */
+typedef struct _Jft_Entry
+{
+  struct _RTL_HANDLE *pNext;
+  HFILE sfn;      /* system file number (global file handle) */
+} Jft_Entry;
+
+struct options
+{
+  char  use_events;
+  const char  *progname;
+  const char  *term;
+};
+
 char buf[1024];
 l4_os3_thread_t thread;
 struct param param;
 APIRET rc;
 
+HFILE hf0, hf1, hf2;
+Jft_Entry *jft_entry;
+ULONG ulAction;
 unsigned long hmod;
 ULONG curdisk, map;
 unsigned long ulActual;
@@ -96,11 +122,11 @@ unsigned long ulActual;
 char *p = buf;
 int i;
 
-APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError)
+APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadError)
 {
   /* Load the LX executable */
   rc = KalPvtLoadModule(pszLoadError, &cbLoadError,
-                        name, &s, &hmod);
+                        opts->progname, &s, &hmod);
 
   rcCode = rc;
 
@@ -114,10 +140,13 @@ APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError
 
   io_log("LX loaded successfully\n");
 
+  io_log("eip: %x\n", s.ip);
+  io_log("esp: %x\n", s.sp);
+
   param.eip = s.ip;
   param.esp = s.sp;
 
-  strcpy(s.path, name);
+  strcpy(s.path, opts->progname);
 
   /* notify OS/2 server about parameters got from execsrv */
   CPClientAppNotify2(&s, "os2app", &thread,
@@ -137,6 +166,43 @@ APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError
   }
 
   param.curdisk = curdisk;
+
+  io_log("Attached to a terminal: %s\n", opts->term);
+
+  /* open file descriptors for stdin/stdout/stderr */
+  if ( KalOpenL((char *)opts->term,
+                &hf0,
+                &ulAction,
+                0,
+                0,
+                OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYNONE |
+                OPEN_ACCESS_READONLY,
+                NULL) ||
+       KalOpenL((char *)opts->term,
+                &hf1,
+                &ulAction,
+                0,
+                0,
+                OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYNONE |
+                OPEN_ACCESS_WRITEONLY,
+                NULL) ||
+       KalOpenL((char *)opts->term,
+                &hf2,
+                &ulAction,
+                0,
+                0,
+                OPEN_ACTION_FAIL_IF_NEW | OPEN_ACTION_OPEN_IF_EXISTS,
+                OPEN_FLAGS_FAIL_ON_ERROR | OPEN_SHARE_DENYNONE |
+                OPEN_ACCESS_WRITEONLY,
+                NULL) )
+  {
+    io_log("Can't open stdio file descriptors, exiting...\n");
+    Exit(1, 1);
+  }
+
+  io_log("Successfully allocated stdio file descriptors.\n");
 
   /* get the info blocks (needed by C startup code) */
   rc = KalMapInfoBlocks(&ptib[0], &ppib);
@@ -165,9 +231,9 @@ APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError
   sprintf(p, "The process id is %lx\n", ppib->pib_ulpid);
   KalWrite(1, p, strlen(p) + 1, &ulActual);
 
-  io_log("Starting %s LX exe...\n", name);
+  io_log("Starting %s LX exe...\n", opts->progname);
   rc = trampoline (&param);
-  io_log("... %s finished.\n", name);
+  io_log("... %s finished.\n", opts->progname);
 
   // unload exe module
   KalFreeModule(hmod);

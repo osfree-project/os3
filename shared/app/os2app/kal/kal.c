@@ -41,6 +41,16 @@
 /* Semaphore handle table pointer */
 HANDLE_TABLE *htSem;
 
+/* Job File Table (local file handles) */
+extern HANDLE_TABLE jft;
+
+/* JFT entry */
+typedef struct _Jft_Entry
+{
+  struct _RTL_HANDLE *pNext;
+  HFILE sfn;      /* system file number (global file handle) */
+} Jft_Entry;
+
 /* Handle table element           */
 /* typedef struct _SEM
 {
@@ -115,6 +125,9 @@ KalOpenL (PSZ pszFileName,
           PEAOP2 peaop2)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
+  HFILE hf;
   EAOP2 eaop2;
   APIRET  rc;
 
@@ -143,6 +156,8 @@ KalOpenL (PSZ pszFileName,
 
   rc = KalQueryCurrentDisk(&dsknum, &plog); /*For c:\os2 it becomes 3 (drive letter)*/
                      /*  3     "os2" */
+
+  io_log("KalQueryCurrentDisk: rc=%lu\n", rc);
   if (rc)
   {
     KalQuit();
@@ -222,9 +237,29 @@ KalOpenL (PSZ pszFileName,
   //rc = os2fs_dos_OpenL_call (&fs, dir_buf_out, phFile,
     //                  pulAction, cbFile, ulAttribute,
     //                  fsOpenFlags, fsOpenMode, peaop2, &env);
-  rc = FSClientOpenL(dir_buf_out, phFile,
+  rc = FSClientOpenL(dir_buf_out, &sfn,
                      pulAction, cbFile, ulAttribute,
                      fsOpenFlags, fsOpenMode, peaop2);
+
+  if (rc)
+  {
+    KalQuit();
+    return rc;
+  }
+
+  rc = HndAllocateHandle(&jft, &hf, (HANDLE **)&jft_entry);
+
+  if (rc)
+  {
+    KalQuit();
+    return rc;
+  }
+
+  jft_entry->sfn = sfn;
+  *phFile = hf;
+
+  io_log("*** KalOpenL: hf=%u, sfn=%u\n", hf, sfn);
+
   KalQuit();
   return rc;
 }
@@ -241,10 +276,24 @@ KalFSCtl (PVOID pData,
           HFILE hFile,
           ULONG method)
 {
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET  rc = NO_ERROR;
+
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   // ...
+
   KalQuit();
+
   return rc;
 }
 
@@ -255,9 +304,19 @@ KalRead (HFILE hFile, PVOID pBuffer,
 {
   //CORBA_Environment env = dice_default_environment;
   //int nread = 0;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc = NO_ERROR;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
 
   if (! cbRead)
   {
@@ -278,7 +337,7 @@ KalRead (HFILE hFile, PVOID pBuffer,
   }
   *pcbActual = nread; */
 
-  rc = FSClientRead(hFile, pBuffer, cbRead, pcbActual);
+  rc = FSClientRead(sfn, pBuffer, cbRead, pcbActual);
 
   // strange, if I remove this, the command line refuses to work!
   //io_log("test\n");
@@ -294,10 +353,20 @@ KalWrite (HFILE hFile, PVOID pBuffer,
           ULONG cbWrite, PULONG pcbActual)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc = NO_ERROR;
   //int nwritten = 0;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
 
   if (! cbWrite)
   {
@@ -318,7 +387,7 @@ KalWrite (HFILE hFile, PVOID pBuffer,
   }
   *pcbActual = nwritten; */
 
-  rc = FSClientWrite(hFile, pBuffer, cbWrite, pcbActual);
+  rc = FSClientWrite(sfn, pBuffer, cbWrite, pcbActual);
 
   KalQuit();
 
@@ -548,9 +617,9 @@ long attach_module (ULONG hmod, unsigned long long area)
   unsigned long index;
   ULONG rc;
 
-  io_log("attach_module: area=%llx, hmod=%lx\n", area, hmod);
+  io_log("attach_module: area=%x, hmod=%x\n", area, hmod);
 
-  index = 0; rc = 0;
+  index = 0; rc = NO_ERROR;
   while (! ExcClientGetSect (hmod, &index, &sect) && ! rc)
   {
     ds    = sect.ds;
@@ -574,7 +643,8 @@ long attach_module (ULONG hmod, unsigned long long area)
       rc = attach_ds_area (ds, area, flags, addr);
 
       if (! rc)
-        io_log("attached\n");
+        io_log("ds %u attached at %x, area %x, flags %x\n",
+               ds.ds.id, addr, area, flags);
       //else if (rc != -L4_EUSED)
       else if (rc != ERROR_ALREADY_USED)
       {
@@ -584,12 +654,14 @@ long attach_module (ULONG hmod, unsigned long long area)
     }
     else
     {
-      io_log("RegLookupRegion: address is not free: rc=%lu!\n", rc);
+      io_log("WARNING: trying to attach dataspace %u where %u is attached\n",
+             ds.ds.id, area_ds.ds.id);
+      rc = NO_ERROR;
       break;
     }
   }
 
-  return 0;
+  return rc;
 }
 
 
@@ -986,6 +1058,12 @@ KalAllocMem(PVOID *ppb,
 
   KalEnter();
 
+  if (! ppb)
+  {
+    KalQuit();
+    return ERROR_INVALID_PARAMETER;
+  }
+
   if (flags & PAG_READ)
     rights |= DATASPACE_READ;
 
@@ -1066,12 +1144,21 @@ KalFreeMem(PVOID pb)
 
   KalEnter();
 
+  if (! pb)
+  {
+    KalQuit();
+    return ERROR_INVALID_PARAMETER;
+  }
+
   KalGetPID(&pid);
 
   ptr = get_area(pb);
 
   if (! ptr)
+  {
+    KalQuit();
     return ERROR_INVALID_ADDRESS;
+  }
 
   addr = ptr->addr;
 
@@ -1083,14 +1170,17 @@ KalFreeMem(PVOID pb)
   }
 
   // detach and release all dataspaces in ptr->area
-  while (ptr->addr <= addr && addr <= ptr->addr + ptr->size)
+  while (ptr->addr <= addr && addr < ptr->addr + ptr->size)
   {
     //ret = l4rm_lookup_region(addr, (l4_addr_t *)&addr, &size, &ds.ds,
     //                         &offset, &pager);
     ret = RegLookupRegion(addr, &addr, &size, &offset, &ds);
 
     if (ret < 0)
+    {
+      KalQuit();
       return ERROR_INVALID_ADDRESS;
+    }
 
     //switch (ret)
     //{
@@ -1935,57 +2025,119 @@ KalGiveSharedMem(PVOID pb,
 }
 
 APIRET CDECL
-KalResetBuffer(HFILE handle)
+KalResetBuffer(HFILE hFile)
 {
   //CORBA_Environment env = dice_default_environment;
-  int rc;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
+  APIRET rc = NO_ERROR;
+
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_ResetBuffer_call (&fs, handle, &env);
-  rc = FSClientResetBuffer(handle);
+  rc = FSClientResetBuffer(sfn);
+
   KalQuit();
+
   return rc;
 }
 
 APIRET CDECL
-KalSetFilePtrL(HFILE handle,
+KalSetFilePtrL(HFILE hFile,
                LONGLONG ib,
                ULONG method,
                PULONGLONG ibActual)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   int rc;
+
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_SetFilePtrL_call (&fs, handle, ib,
     //                              method, ibActual, &env);
-  rc = FSClientSetFilePtrL(handle, ib,
+  rc = FSClientSetFilePtrL(sfn, ib,
                            method, ibActual);
+
   KalQuit();
+
   return rc;
 }
 
 APIRET CDECL
-KalClose(HFILE handle)
+KalClose(HFILE hFile)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   int rc;
+
   KalEnter();
+
+  io_log("### KalClose: hf=%u\n", hFile);
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
+  io_log("### KalClose: sfn=%u\n", sfn);
+
+  HndFreeHandle(&jft, (HANDLE *)jft_entry);
+
   //rc = os2fs_dos_Close_call (&fs, handle, &env);
-  rc = FSClientClose(handle);
+  rc = FSClientClose(sfn);
+
   KalQuit();
+
   return rc;
 }
 
 APIRET CDECL
-KalQueryHType(HFILE handle,
+KalQueryHType(HFILE hFile,
               PULONG pType,
               PULONG pAttr)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   int rc;
+
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_QueryHType_call(&fs, handle, pType, pAttr, &env);
-  rc = FSClientQueryHType(handle, pType, pAttr);
+  rc = FSClientQueryHType(sfn, pType, pAttr);
+
   KalQuit();
+
   return rc;
 }
 
@@ -2047,12 +2199,41 @@ APIRET CDECL
 KalDupHandle(HFILE hFile, HFILE *phFile2)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry, *jft_entry2;
+  HFILE sfn, sfn2;
   APIRET rc;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_DupHandle_call(&fs, hFile, phFile2, &env);
-  rc = FSClientDupHandle(hFile, phFile2);
+  rc = FSClientDupHandle(sfn, &sfn2);
+
+  if (rc)
+  {
+    KalQuit();
+    return rc;
+  }
+
+  rc = HndAllocateHandle(&jft, phFile2, (HANDLE **)&jft_entry2);
+
+  if (rc)
+  {
+    KalQuit();
+    return rc;
+  }
+
+  jft_entry2->sfn = sfn2;
+
   KalQuit();
+
   return rc; /* NO_ERROR */
 }
 
@@ -2234,12 +2415,25 @@ KalQueryFHState(HFILE hFile,
                 PULONG pMode)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_QueryFHState_call(&fs, hFile, pMode, &env);
-  rc = FSClientQueryFHState(hFile, pMode);
+  rc = FSClientQueryFHState(sfn, pMode);
+
   KalQuit();
+
   return rc;
 }
 
@@ -2249,30 +2443,56 @@ KalSetFHState(HFILE hFile,
               ULONG pMode)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_SetFHState_call(&fs, hFile, pMode, &env);
-  rc = FSClientSetFHState(hFile, pMode);
+  rc = FSClientSetFHState(sfn, pMode);
+
   KalQuit();
+
   return rc;
 }
 
 APIRET CDECL
-KalQueryFileInfo(HFILE hf,
+KalQueryFileInfo(HFILE hFile,
                  ULONG ulInfoLevel,
                  char *pInfo,
                  ULONG cbInfoBuf)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_QueryFileInfo_call(&fs, hf, ulInfoLevel,
     //                                &pInfo, &cbInfoBuf, &env);
-  rc = FSClientQueryFileInfo(hf, ulInfoLevel,
+  rc = FSClientQueryFileInfo(sfn, ulInfoLevel,
                              pInfo, &cbInfoBuf);
+
   KalQuit();
+
   return rc;
 }
 
@@ -2360,12 +2580,25 @@ KalSetFileSizeL(HFILE hFile,
                 long long cbSize)
 {
   //CORBA_Environment env = dice_default_environment;
+  Jft_Entry *jft_entry;
+  HFILE sfn;
   APIRET rc;
 
   KalEnter();
+
+  if ( ! HndIsValidIndexHandle(&jft, hFile, (HANDLE **)&jft_entry) )
+  {
+    KalQuit();
+    return ERROR_INVALID_HANDLE;
+  }
+
+  sfn = jft_entry->sfn;
+
   //rc = os2fs_dos_SetFileSizeL_call(&fs, hFile, cbSize, &env);
-  rc = FSClientSetFileSizeL(hFile, cbSize);
+  rc = FSClientSetFileSizeL(sfn, cbSize);
+
   KalQuit();
+
   return rc;
 }
 
@@ -2644,12 +2877,15 @@ KalGetInfoBlocks(PTIB *pptib, PPIB *pppib)
   KalEnter();
   // get thread ID
   KalGetTID(&tid);
+  io_log("*** tid=%x\n", tid);
   // TIB
   if (pptib)
     *pptib = ptib[tid - 1];
+  io_log("*** ptib=%x\n", *pptib);
   // PIB
   if (pppib)
     *pppib = ppib;
+  io_log("*** ppib=%x\n", *pppib);
   KalQuit();
   return NO_ERROR;
 }

@@ -96,6 +96,8 @@ struct mod_list
   unsigned long hmod;
 };
 
+struct options;
+
 typedef struct mod_list mod_list_t;
 
 mod_list_t *module_add(mod_list_t *list, unsigned long hmod);
@@ -127,7 +129,7 @@ void KalEnter(void);
 
 void KalQuit(void);
 
-APIRET CDECL KalStartApp(const char *name, char *pszLoadError, ULONG cbLoadError);
+APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadError);
 
 APIRET CDECL KalDlOpen(PSZ name, PULONG handle);
 APIRET CDECL KalDlSym(ULONG handle, PSZ sym, PPVOID addr);

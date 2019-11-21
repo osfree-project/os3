@@ -177,7 +177,7 @@ long RegAreaReserveRegionInArea(unsigned long size,
                                 void          *addr,
                                 unsigned long long *area)
 {
-    return RegAreaReserveInArea(size, flags, &addr, area);
+    return l4rm_area_reserve_region_in_area(addr, size, flags, area);
 }
 
 long RegAreaReserve(unsigned long size,

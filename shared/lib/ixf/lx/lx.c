@@ -378,147 +378,160 @@ unsigned long convert_entry_table_to_BFF(IXFModule * ixfModule)
 unsigned long calc_imp_fixup_obj_lx(struct LX_module * lx_exe_mod,
                                 struct o32_obj * lx_obj, int *ret_rc)
 {
-  unsigned long fixups;
+    unsigned long fixups;
 
-  //int ord_found;
-  //char *pas_imp_proc_name;
-  //int import_name_offs;
-  //char buf_import_name[260];
-  //char cont_buf_mod_name[255];
-  //char * mod_name;
-  //char * cont_mod_name;
-  //int import_ord;
-  //int mod_nr;
-  //unsigned long rc;
-  //unsigned long int * ptr_source;
-  //unsigned long int vm_source;
-  //unsigned long int vm_target;
-  //unsigned long int vm_start_target_obj;
-  //struct o32_obj * target_object;
-  //char buf_mod_name[255];
-  //char * org_mod_name;
-  //struct LX_module *found_module;
-  //int trgoffs;
-  //int object1;
-  //int addit;
-  //int srcoff_cnt1;
-  //int fixup_source_flag;
-  int fixup_source;
-  int fixup_offset;
-  //char *import_name;
-  //unsigned long vm_start_of_page;
-  struct r32_rlc * min_rlc;
-  int pg_offs_fix;
-  int pg_end_offs_fix;
-  int page_nr=0;
-  int startpage = lx_obj->o32_pagemap;
-  int lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
+    //int ord_found;
+    //char *pas_imp_proc_name;
+    //int import_name_offs;
+    //char buf_import_name[260];
+    //char cont_buf_mod_name[255];
+    //char * mod_name;
+    //char * cont_mod_name;
+    //int import_ord;
+    //int mod_nr;
+    //unsigned long rc;
+    //unsigned long int * ptr_source;
+    //unsigned long int vm_source;
+    //unsigned long int vm_target;
+    //unsigned long int vm_start_target_obj;
+    //struct o32_obj * target_object;
+    //char buf_mod_name[255];
+    //char * org_mod_name;
+    //struct LX_module *found_module;
+    //int trgoffs;
+    //int object1;
+    //int addit;
+    //int srcoff_cnt1;
+    //int fixup_source_flag;
+    int fixup_source;
+    int fixup_offset;
+    //char *import_name;
+    //unsigned long vm_start_of_page;
+    struct r32_rlc * min_rlc;
+    int pg_offs_fix;
+    int pg_end_offs_fix;
+    int page_nr=0;
+    int startpage = lx_obj->o32_pagemap;
+    int lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
 
-  fixups=0;
+    fixups=0;
 
-  /* Goes through every page of the object.
-     The fixups are variable size and a bit messy to traverse.*/
+    /* Goes through every page of the object.
+       The fixups are variable size and a bit messy to traverse.*/
 
-  for(page_nr=startpage; page_nr < lastpage; page_nr++)
-  {
-    /* Go and get byte position for fixup from the page logisk_sida.
-       Start offset for fixup in the page*/
-    pg_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr);
-
-    /* Offset for next page.*/
-    pg_end_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr+1);
-
-    /* Fetches a relocations structure from offset pg_offs_fix.*/
-    min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, pg_offs_fix);
-
-    fixup_offset = pg_offs_fix;
-
-    /* Get the memory address for the page. The page number is
-       from the beginning of all pages a need to be adapted to the beginning of this
-       object. */
-    //vm_start_of_page = lx_obj->o32_reserved +
-    //                                get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
-
-    /*
-    This loop traverses the fixups and increases
-    the pointer min_rlc with the size of previoues fixup.
-    while(min_rlc is within the offset of current page) {
-    */
-    while(fixup_offset < pg_end_offs_fix)
+    for(page_nr=startpage; page_nr < lastpage; page_nr++)
     {
-      min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
-      print_struct_r32_rlc_info(min_rlc);
+        /* Go and get byte position for fixup from the page logisk_sida.
+           Start offset for fixup in the page*/
+        pg_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr);
 
-      fixup_source = min_rlc->nr_stype & 0xf;
-      //fixup_source_flag = min_rlc->nr_stype & 0xf0;
+        /* Offset for next page.*/
+        pg_end_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr+1);
 
-      switch(min_rlc->nr_flags & NRRTYP)
-      {
-        case NRRINT:
-        case NRRENT:
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
-        case NRRORD:
-          {/* Import by ordinal */
-          fixups++;
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
-          }
-        case NRRNAM:
-          {/* Import by name */
-          fixups++;
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
-          }
+        /* Fetches a relocations structure from offset pg_offs_fix.*/
+        min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, pg_offs_fix);
 
-        default:
-          io_log("Unsupported Fixup! SRC: 0x%x \n", fixup_source);
-          return 0; /* Is there any OS/2 error number for this? */
-      } /* switch(fixup_source) */
-    } /* while(fixup_offset < pg_end_offs_fix) { */
-  }
-  return fixups;
+        fixup_offset = pg_offs_fix;
+
+        /* Get the memory address for the page. The page number is
+           from the beginning of all pages a need to be adapted to the beginning of this
+           object. */
+        //vm_start_of_page = lx_obj->o32_reserved +
+        //                                get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
+
+        /*
+        This loop traverses the fixups and increases
+        the pointer min_rlc with the size of previoues fixup.
+        while(min_rlc is within the offset of current page) {
+        */
+        while(fixup_offset < pg_end_offs_fix)
+        {
+            min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
+            print_struct_r32_rlc_info(min_rlc);
+
+            fixup_source = min_rlc->nr_stype & 0xf;
+            //fixup_source_flag = min_rlc->nr_stype & 0xf0;
+
+            switch(min_rlc->nr_flags & NRRTYP)
+            {
+                case NRRINT:
+                case NRRENT:
+                    fixup_offset += get_reloc_size_rlc(min_rlc);
+                    break;
+
+                case NRRORD:
+                {/* Import by ordinal */
+                    if (min_rlc->nr_stype & NRCHAIN)
+                        fixups += min_rlc->r32_soff & 0xff;
+                    else
+                        fixups++;
+
+                    fixup_offset += get_reloc_size_rlc(min_rlc);
+                }
+                break;
+
+                case NRRNAM:
+                {/* Import by name */
+                    if (min_rlc->nr_stype & NRCHAIN)
+                        fixups += min_rlc->r32_soff & 0xff;
+                    else
+                        fixups++;
+
+                    fixup_offset += get_reloc_size_rlc(min_rlc);
+                }
+                break;
+
+                default:
+                    io_log("Unsupported Fixup! SRC: 0x%x \n", fixup_source);
+                    return 0; /* Is there any OS/2 error number for this? */
+            } /* switch(fixup_source) */
+        } /* while(fixup_offset < pg_end_offs_fix) { */
+    }
+
+    return fixups;
 }
 
 
 unsigned long convert_fixup_table_to_BFF(IXFModule * ixfModule)
 {
-  unsigned long int i;
-  unsigned long ret_rc, fixup_counter;
+    unsigned long int i;
+    unsigned long ret_rc, fixup_counter;
 
-  ixfModule->cbFixups=0;
-  io_log("ixfModule->name=%s\n", ixfModule->name);
+    ixfModule->cbFixups=0;
+    io_log("ixfModule->name=%s\n", ixfModule->name);
 
-  /* If there is a code object (with a main function) then do a fixup on it and
-     it's data/stack object if it exists.*/
-  for(i=1; i<=get_obj_num((struct LX_module *)(ixfModule->FormatStruct)); i++)
-  {
-    struct o32_obj * obj = get_obj((struct LX_module *)(ixfModule->FormatStruct), i);
-    if(obj != 0)
-      ixfModule->cbFixups += calc_imp_fixup_obj_lx((struct LX_module *)(ixfModule->FormatStruct), obj, (int *)&ret_rc);
-  }
+    /* If there is a code object (with a main function) then do a fixup on it and
+       it's data/stack object if it exists.*/
+    for(i=1; i<=get_obj_num((struct LX_module *)(ixfModule->FormatStruct)); i++)
+    {
+        struct o32_obj * obj = get_obj((struct LX_module *)(ixfModule->FormatStruct), i);
 
-  io_log("aaa\n");
-  if (ixfModule->cbFixups==0)
-  {
-    ixfModule->Fixups=NULL;
-    return 0;
-  }
-  ixfModule->Fixups=(IXFFIXUPENTRY *)malloc(ixfModule->cbFixups*sizeof(IXFFIXUPENTRY));
+        if(obj != 0)
+            ixfModule->cbFixups += calc_imp_fixup_obj_lx((struct LX_module *)(ixfModule->FormatStruct), obj, (int *)&ret_rc);
+    }
 
-  /* Fill table... */
-  fixup_counter = 0;
-  io_log("bbb\n");
-  for(i=1; i<=get_obj_num((struct LX_module *)(ixfModule->FormatStruct)); i++)
-  {
-    struct o32_obj * obj = get_obj((struct LX_module *)(ixfModule->FormatStruct), i);
-    if(obj != 0)
-      /*ixfModule->cbFixups +=*/ convert_imp_fixup_obj_lx(ixfModule, obj, (int *)&ret_rc, &fixup_counter);
-  }
+    io_log("aaa\n");
+    if (ixfModule->cbFixups==0)
+    {
+        ixfModule->Fixups=NULL;
+        return 0;
+    }
+
+    ixfModule->Fixups=(IXFFIXUPENTRY *)malloc(ixfModule->cbFixups*sizeof(IXFFIXUPENTRY));
+
+    /* Fill table... */
+    fixup_counter = 0;
+    io_log("bbb\n");
+    for(i=1; i<=get_obj_num((struct LX_module *)(ixfModule->FormatStruct)); i++)
+    {
+        struct o32_obj * obj = get_obj((struct LX_module *)(ixfModule->FormatStruct), i);
+        if(obj != 0)
+            /*ixfModule->cbFixups +=*/ convert_imp_fixup_obj_lx(ixfModule, obj, (int *)&ret_rc, &fixup_counter);
+    }
 
 
-  io_log("ccc\n");
-  return 0; /* NO_ERROR */
+    io_log("ccc\n");
+    return 0; /* NO_ERROR */
 }
 
 /* Applies fixups for an object. Returns true(1) or false(0) to show status.*/
@@ -526,202 +539,263 @@ int convert_imp_fixup_obj_lx(IXFModule * ixfModule,
                                 struct o32_obj * lx_obj, int *ret_rc,
                                 unsigned long *fixup_counter)
 {
-  struct LX_module * lx_exe_mod;
+    struct LX_module * lx_exe_mod;
 
-  //int ord_found;
-  char *pas_imp_proc_name;
-  int import_name_offs;
-  char buf_import_name[260];
-  //char cont_buf_mod_name[255];
-  char * mod_name;
-  //char * cont_mod_name;
-  int import_ord;
-  int mod_nr;
-  //unsigned long rc;
-  //unsigned long int * ptr_source;
-  //unsigned long int vm_source;
-  //unsigned long int vm_target;
-  //unsigned long int vm_start_target_obj;
-  //struct o32_obj * target_object;
-  char buf_mod_name[255];
-  char *org_mod_name;
-  //struct LX_module *found_module;
-  //int trgoffs;
-  //int object1;
-  ////int addit;
-  int srcoff_cnt1;
-  //int fixup_source_flag;
-  int fixup_source;
-  int fixup_offset;
-  char *import_name;
-  unsigned long int vm_start_of_page;
-  unsigned long int start_of_page;
-  struct r32_rlc * min_rlc;
-  int pg_offs_fix;
-  int pg_end_offs_fix;
-  int page_nr=0;
-  int startpage = lx_obj->o32_pagemap;
-  int lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
-  //UCHAR uchLoadError[CCHMAXPATH] = {0}; /* Error info from DosExecPgm */
-  //unsigned long fixup_counter;
+    //int ord_found;
+    char *pas_imp_proc_name;
+    int import_name_offs;
+    char buf_import_name[260];
+    //char cont_buf_mod_name[255];
+    char * mod_name;
+    //char * cont_mod_name;
+    int import_ord;
+    int mod_nr;
+    //unsigned long rc;
+    //unsigned long int * ptr_source;
+    //unsigned long int vm_source;
+    //unsigned long int vm_target;
+    //unsigned long int vm_start_target_obj;
+    //struct o32_obj * target_object;
+    char buf_mod_name[255];
+    char *org_mod_name;
+    //struct LX_module *found_module;
+    //int trgoffs;
+    //int object1;
+    int addit = 0;
+    int additive_size = 0;
+    int srcoff_cnt1;
+    //int fixup_source_flag;
+    int fixup_source;
+    int fixup_offset;
+    char *import_name;
+    unsigned long int vm_start_of_page;
+    unsigned long int start_of_page;
+    struct r32_rlc * min_rlc;
+    int pg_offs_fix;
+    int pg_end_offs_fix;
+    int page_nr=0;
+    int startpage = lx_obj->o32_pagemap;
+    int lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
+    //UCHAR uchLoadError[CCHMAXPATH] = {0}; /* Error info from DosExecPgm */
+    //unsigned long fixup_counter;
+    int i;
 
-  //fixup_counter=0;
-  lx_exe_mod=(struct LX_module *)(ixfModule->FormatStruct);
+    //fixup_counter=0;
+    lx_exe_mod=(struct LX_module *)(ixfModule->FormatStruct);
 
-  //io_log("--------------------Listing fixup data ------------------------- %p\n", lx_obj);
+    //io_log("--------------------Listing fixup data ------------------------- %p\n", lx_obj);
 
-  /* Goes through every page of the object.
-     The fixups are variable size and a bit messy to traverse.*/
+    /* Goes through every page of the object.
+       The fixups are variable size and a bit messy to traverse.*/
 
-  for(page_nr=startpage; page_nr < lastpage; page_nr++)
-  {
-    if (options.debugixfmgr) io_log("-----  Object %d of %d\n",startpage, lastpage);
-
-    /* Go and get byte position for fixup from the page logisk_sida.
-       Start offset for fixup in the page*/
-    pg_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr);
-
-    /* Offset for next page.*/
-    pg_end_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr+1);
-
-    /* Fetches a relocations structure from offset pg_offs_fix.*/
-    min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, pg_offs_fix);
-
-    fixup_offset = pg_offs_fix;
-
-    /* Get the memory address for the page. The page number is
-       from the beginning of all pages a need to be adapted to the beginning of this
-       object. */
-    //vm_start_of_page = lx_obj->o32_base +
-    vm_start_of_page = lx_obj->o32_reserved +
-                                    get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
-    start_of_page = lx_obj->o32_base +
-                                    get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
-    /*
-    This loop traverses the fixups and increases
-    the pointer min_rlc with the size of previoues fixup.
-    while(min_rlc is within the offset of current page) {
-    */
-    while(fixup_offset < pg_end_offs_fix)
+    for (page_nr = startpage; page_nr < lastpage; page_nr++)
     {
-      io_log("fixup_offset=%lx\n", fixup_offset);
-      min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
-      io_log("min_rlc=%lx\n", min_rlc);
-      print_struct_r32_rlc_info(min_rlc);
+        if (options.debugixfmgr) io_log("-----  Object %d of %d\n",startpage, lastpage);
 
-      fixup_source = min_rlc->nr_stype & 0xf;
-      //fixup_source_flag = min_rlc->nr_stype & 0xf0;
+        /* Go and get byte position for fixup from the page logisk_sida.
+           Start offset for fixup in the page*/
+        pg_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr);
 
-      switch(min_rlc->nr_flags & NRRTYP)
-      {
-        case NRRINT: /* Skip internal */
-        case NRRENT:
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
-        //case NRRENT:
-          //{ /* Internal entry table import */
-            //io_log("mess4e1\n");
-            //mod_nr = get_mod_ord1_rlc(min_rlc); // Request module number
-            //io_log("mess4e2\n");
-            //import_ord = get_imp_ord1_rlc(min_rlc); // Request ordinal number
-            //io_log("mess4e3\n");
-            //srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
-            //io_log("mess4e4\n");
-            //addit = get_additive_rlc(min_rlc);
-            //io_log("mess4e3\n");
+        /* Offset for next page.*/
+        pg_end_offs_fix = get_fixup_pg_tbl_offs(lx_exe_mod, page_nr+1);
 
-            //mod_name = (char*)&buf_mod_name;
+        /* Fetches a relocations structure from offset pg_offs_fix.*/
+        min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, pg_offs_fix);
 
-            /* Get name of imported module. */
-            //io_log("mess4e6\n");
-            //org_mod_name = get_imp_mod_name(lx_exe_mod,mod_nr);
-            //io_log("mess4e7\n");
-            //copy_pas_str(mod_name, org_mod_name);
+        fixup_offset = pg_offs_fix;
 
-            //ixfModule->Fixups[fixup_counter].SrcVmAddress = ixfModule->Entries[mod_nr].Address;
-            //io_log("mess4e4\n");
-            //ixfModule->Fixups[fixup_counter].SrcAddress = ixfModule->Entries[mod_nr].Address;
-            //io_log("mess4e5\n");
-            //ixfModule->Fixups[fixup_counter].ImportEntry.FunctionName=ixfModule->Entries[mod_nr].FunctionName;
-            //io_log("mess4e6\n");
-            //mod_name = ixfModule->Entries[mod_nr].ModuleName;
-            //io_log("mess4e7: mod_name=%s\n", mod_name);
-            //ixfModule->Fixups[fixup_counter].ImportEntry.ModuleName=malloc(strlen(mod_name)+1);
-            //io_log("mess4e8\n");
-            //strcpy(ixfModule->Fixups[fixup_counter].ImportEntry.ModuleName, mod_name);
-            //io_log("mess4e9\n");
-            //ixfModule->Fixups[fixup_counter].ImportEntry.Ordinal=ixfModule->Entries[mod_nr].Ordinal;
-            //fixup_counter++;
-            //io_log("mess4e7\n");
-          //}
-          //fixup_offset += get_reloc_size_rlc(min_rlc);
-          //io_log("mess4e8\n");
-          //break;
-        case NRRORD:
-          {/* Import by ordinal */
-            /* Indata: lx_exe_mod, min_rlc */
-            io_log("333\n");
-            mod_nr = get_mod_ord1_rlc(min_rlc); // Request module number
-            import_ord = get_imp_ord1_rlc(min_rlc); // Request ordinal number
-            srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
-            ////addit = get_additive_rlc(min_rlc);
+        /* Get the memory address for the page. The page number is
+           from the beginning of all pages a need to be adapted to the beginning of this
+           object. */
+        //vm_start_of_page = lx_obj->o32_base +
+        vm_start_of_page = lx_obj->o32_reserved +
+            get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
+        start_of_page = lx_obj->o32_base +
+            get_e32_pagesize(lx_exe_mod) * (page_nr-lx_obj->o32_pagemap);
+        /*
+        This loop traverses the fixups and increases
+        the pointer min_rlc with the size of previoues fixup.
+        while(min_rlc is within the offset of current page) {
+        */
+        while (fixup_offset < pg_end_offs_fix)
+        {
+            io_log("fixup_offset=%lx\n", fixup_offset);
+            min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
+            io_log("min_rlc=%lx\n", min_rlc);
+            print_struct_r32_rlc_info(min_rlc);
 
-            mod_name = (char*)&buf_mod_name;
+            fixup_source = min_rlc->nr_stype & 0xf;
+            //fixup_source_flag = min_rlc->nr_stype & 0xf0;
 
-            /* Get name of imported module. */
-            org_mod_name = get_imp_mod_name(lx_exe_mod,mod_nr);
-            copy_pas_str(mod_name, org_mod_name);
+            switch (min_rlc->nr_flags & NRRTYP)
+            {
+                case NRRINT: /* Skip internal */
+                case NRRENT:
+                    fixup_offset += get_reloc_size_rlc(min_rlc);
+                    break;
 
+                case NRRORD:
+                {/* Import by ordinal */
+                    int import_ord_size = 0;
+                    int mod_ord_size = 0;
 
-//   io_log("page=%x\n", vm_start_of_page);
-            ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
-            ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1);
-            ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName=NULL;
-            ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
-            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
-            ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=(int)import_ord;
-            (*fixup_counter) ++;
+                    /* Indata: lx_exe_mod, min_rlc */
+                    io_log("333\n");
 
+                    mod_nr = get_mod_ord1_rlc(min_rlc); // Request module number
+                    import_ord = get_imp_ord1_rlc(min_rlc); // Request ordinal number
 
-          }
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
+                    if (min_rlc->nr_flags & 0x04) // additive present
+                        additive_size = 2;
 
-        case NRRNAM:
-          {/* Import by name */
-            //io_log("Import by name \n");
-            io_log("444\n");
-            mod_nr = get_mod_ord1_rlc(min_rlc);
-            import_name_offs = get_imp_ord1_rlc(min_rlc);
-            srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
-            ////addit = get_additive_rlc(min_rlc);
+                    if (min_rlc->nr_flags & 0x20) // 32-bit additive field
+                        additive_size = 4;
 
-            pas_imp_proc_name = get_imp_proc_name(lx_exe_mod, import_name_offs);
-            copy_pas_str(buf_import_name, pas_imp_proc_name);
-            import_name = (char*)&buf_import_name;
-            mod_name = (char*)&buf_mod_name;
-            /* Get name of imported module. */
-            org_mod_name = get_imp_mod_name(lx_exe_mod,mod_nr);
-            copy_pas_str(mod_name, org_mod_name);
+                    if (additive_size)
+                        addit = get_additive_rlc(min_rlc);
 
-            ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
-            ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1);
-            ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = (char *)malloc(strlen(import_name)+1);
-            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName, import_name);
-            ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
-            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
-            ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=0;
-            (*fixup_counter) ++;
+                    //addit = 0;
 
-          }
-          fixup_offset += get_reloc_size_rlc(min_rlc);
-          break;
+                    if (min_rlc->nr_flags & 0x80) // 8-bit ordinal flag
+                        import_ord_size = 1;
+                    else if (min_rlc->nr_flags & 0x10) // 32-bit target offset flag
+                        import_ord_size = 4;
+                    else
+                        import_ord_size = 2;
 
-        default:
-          io_log("Unsupported Fixup! SRC: 0x%x \n", fixup_source);
-          return 0; /* Is there any OS/2 error number for this? */
-      } /* switch(fixup_source) */
-    } /* while(fixup_offset < pg_end_offs_fix) { */
-  }
-  return 1;
+                    if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
+                        mod_ord_size = 2;
+                    else
+                        mod_ord_size = 1;
+
+                    mod_name = (char*)&buf_mod_name;
+
+                    /* Get name of imported module. */
+                    org_mod_name = get_imp_mod_name(lx_exe_mod,mod_nr);
+                    copy_pas_str(mod_name, org_mod_name);
+
+                    if (min_rlc->nr_stype & NRCHAIN)
+                    {
+                        unsigned short *srcoff = (unsigned short *)
+                            ((char *)min_rlc + 3 * 1 + mod_ord_size +
+                            import_ord_size + additive_size);
+
+                        for (i = 0; i < get_srcoff_cnt1_rlc(min_rlc); i++)
+                        {
+                            srcoff_cnt1 = srcoff[i];
+                            io_log("!!! mod_ord_size=%u, import_ord_size=%u, additive_size=%u\n",
+                                   mod_ord_size, import_ord_size, additive_size);
+                            io_log("!!! srcoff[%i]=%x, \n", i, srcoff[i]);
+
+                            ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
+                            ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1 - addit);
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName=NULL;
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
+                            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=(int)import_ord;
+                            (*fixup_counter) ++;
+                        }
+                    }
+                    else
+                    {
+                        srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
+
+                        ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
+                        ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1 - addit);
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName=NULL;
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
+                        strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=(int)import_ord;
+                       (*fixup_counter) ++;
+                    }
+                }
+                fixup_offset += get_reloc_size_rlc(min_rlc);
+                break;
+
+                case NRRNAM:
+                {/* Import by name */
+                    int proc_name_off_size = 0;
+                    int mod_ord_size = 0;
+
+                    //io_log("Import by name \n");
+                    io_log("444\n");
+
+                    mod_nr = get_mod_ord1_rlc(min_rlc);
+                    import_name_offs = get_imp_ord1_rlc(min_rlc);
+
+                    if (min_rlc->nr_flags & 0x04) // additive present
+                        additive_size = 2;
+
+                    if (min_rlc->nr_flags & 0x20) // 32-bit additive field
+                        additive_size = 4;
+
+                    if (additive_size)
+                        addit = get_additive_rlc(min_rlc);
+
+                    //addit = 0;
+
+                    if (min_rlc->nr_flags & 0x10) // 32-bit target offset flag
+                        proc_name_off_size = 4;
+                    else
+                        proc_name_off_size = 2;
+
+                    if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
+                        mod_ord_size = 2;
+                    else
+                        mod_ord_size = 1;
+
+                    pas_imp_proc_name = get_imp_proc_name(lx_exe_mod, import_name_offs);
+                    copy_pas_str(buf_import_name, pas_imp_proc_name);
+                    import_name = (char*)&buf_import_name;
+                    mod_name = (char*)&buf_mod_name;
+
+                    /* Get name of imported module. */
+                    org_mod_name = get_imp_mod_name(lx_exe_mod,mod_nr);
+                    copy_pas_str(mod_name, org_mod_name);
+
+                    if (min_rlc->nr_stype & NRCHAIN)
+                    {
+                        unsigned short *srcoff = (unsigned short *)
+                            ((char *)min_rlc + 3 * 1 + mod_ord_size +
+                            proc_name_off_size + additive_size);
+
+                        for (i = 0; i < get_srcoff_cnt1_rlc(min_rlc); i++)
+                        {
+                            srcoff_cnt1 = srcoff[i];
+
+                            ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
+                            ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1 - addit);
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = (char *)malloc(strlen(import_name)+1);
+                            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName, import_name);
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
+                            strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
+                            ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=0;
+                            (*fixup_counter) ++;
+                        }
+                    }
+                    else
+                    {
+                        srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
+
+                        ixfModule->Fixups[*fixup_counter].SrcVmAddress=/*lx_obj->o32_base*/ (void *)(vm_start_of_page + srcoff_cnt1);
+                        ixfModule->Fixups[*fixup_counter].SrcAddress=/*lx_obj->o32_base*/ (void *)(start_of_page + srcoff_cnt1 - addit);
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = (char *)malloc(strlen(import_name)+1);
+                        strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName, import_name);
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName=(char *)malloc(strlen(mod_name)+1);
+                        strcpy(ixfModule->Fixups[*fixup_counter].ImportEntry.ModuleName, mod_name);
+                        ixfModule->Fixups[*fixup_counter].ImportEntry.Ordinal=0;
+                        (*fixup_counter) ++;
+                    }
+                }
+                fixup_offset += get_reloc_size_rlc(min_rlc);
+                break;
+
+                default:
+                    io_log("Unsupported Fixup! SRC: 0x%x \n", fixup_source);
+                    return 0; /* Is there any OS/2 error number for this? */
+            } /* switch(fixup_source) */
+        } /* while(fixup_offset < pg_end_offs_fix) { */
+    }
+
+    return 1;
 }

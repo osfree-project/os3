@@ -64,6 +64,9 @@ long ExcLoad(unsigned long *phmod,
     s->sp_limit = sysdep->stack_low;
     s->hmod = *phmod;
 
+    io_log("eip: %x\n", ixf->EntryPoint);
+    io_log("esp: %x\n", sysdep->stack_high);
+
     io_log("load_component exited\n");
 
     return rc;

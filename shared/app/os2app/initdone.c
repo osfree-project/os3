@@ -11,6 +11,7 @@
 #include <os3/fs.h>
 #include <os3/cpi.h>
 #include <os3/io.h>
+#include <os3/handlemgr.h>
 #include <os3/stacksw.h>
 
 /* private memory arena settings */
@@ -40,7 +41,20 @@ struct options
 {
   char  use_events;
   const char  *progname;
+  const char  *term;
 };
+
+/* Job File Table (local file handles) */
+HANDLE_TABLE jft;
+
+#define MAX_JFT 1024
+
+/* JFT entry */
+typedef struct _Jft_Entry
+{
+  struct _RTL_HANDLE *pNext;
+  ULONG sfn;      /* system file number (global file handle) */
+} Jft_Entry;
 
 void test(void);
 int init(struct options *opts);
@@ -86,18 +100,45 @@ int init(struct options *opts)
   /* Reserve private and shared regions */
   reserve_regions();
 
+  /* Init JFT */
+  rc = HndInitializeHandleTable(MAX_JFT, sizeof(Jft_Entry), &jft);
+
+  if (rc)
+  {
+    io_log("Failed to init JFT, exiting!\n");
+    Exit(1, 1);
+  }
+
   CPClientTest();
 
   me = KalNativeID();
 
   io_log("calling KalStartApp...\n");
-  KalStartApp(opts->progname, pszLoadError, sizeof(pszLoadError));
+  KalStartApp(opts, pszLoadError, sizeof(pszLoadError));
 
   return 0;
 }
 
 void done(void)
 {
+  Jft_Entry *jft_entry;
+
+  // destroy handle for stdin
+  HndIsValidIndexHandle(&jft, 0, (HANDLE **)&jft_entry);
+  HndFreeHandle(&jft, (HANDLE *)jft_entry);
+
+  // destroy handle for stdout
+  HndIsValidIndexHandle(&jft, 1, (HANDLE **)&jft_entry);
+  HndFreeHandle(&jft, (HANDLE *)jft_entry);
+
+  // destroy handle for stderr
+  HndIsValidIndexHandle(&jft, 2, (HANDLE **)&jft_entry);
+  HndFreeHandle(&jft, (HANDLE *)jft_entry);
+
+  // destroy JFT
+  HndDestroyHandleTable(&jft);
+
+  // terminate connections to servers
   FSClientDone();
   ExcClientDone();
   CPClientDone();

@@ -22,9 +22,9 @@ enum l4re_rm_flags_t {
   L4RE_RM_ATTACH_FLAGS = 0xf0, /**< \brief Mask of all attach flags */
 };
 
-#define REG_FREE            0xe0000000
-#define REG_RESERVED        0xe0000001
-#define REG_DATASPACE       0xe0000002
+#define REG_FREE            0x70000000
+#define REG_RESERVED        0x70000001
+#define REG_DATASPACE       0x70000002
 
 //inline int
 //l4os3_rm_attach(void **start, unsigned long size, unsigned long flags,

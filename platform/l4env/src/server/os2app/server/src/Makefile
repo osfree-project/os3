@@ -35,7 +35,7 @@ endif
 #		  --rpath-link $(OBJ_BASE)/lib/$(ARCH)_$(CPU)/$(L4API)
 #LDSCRIPT	= $(call findfile,main_dyn.ld,$(L4LIBDIR))
 LIBS		= -los2exec -los2fs -los2server -los2app -los2compat -lloaderif -levents \
-                  -ldl -llist_alloc -lgeneric_fprov -ldemangle -ldm_phys
+                  -ldl -llist_alloc -lgeneric_fprov -ldemangle -ldm_phys -lhandle
 #                  -Bdynamic -lkal.s
 DEFAULT_RELOC   = 0xbb000000
 SERVERIDL       = os2app.idl

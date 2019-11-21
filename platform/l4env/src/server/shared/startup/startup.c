@@ -263,7 +263,7 @@ __main(void)
   // skip os2app name and '--stdin <> --stdout <> --stderr <>'
   // and take the next word which is the name of the started 
   // OS/2 program. Skip its path and extension, and leave basename only.
-  if (!strcmp(l4util_argv[0], "os2app") && l4util_argc > 7)
+  if (!strcmp(l4util_argv[0], "os2app") && l4util_argc > 3)
   {
     char *p = LOG_tag;        // the log tag
     char *q = l4util_argv[l4util_argc - 1]; // program path

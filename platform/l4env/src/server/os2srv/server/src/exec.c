@@ -91,7 +91,8 @@ int LoaderExec(char *cmd, char *params, char *vc, l4_os3_task_t *taskid)
   io_log("dataspace attached\n");
 
   if (vc)
-    sprintf(str, "--stdin %s --stdout %s --stderr %s ", vc, vc, vc);
+    //sprintf(str, "--stdin %s --stdout %s --stderr %s ", vc, vc, vc);
+    sprintf(str, "--term %s ", vc);
 
   /* create a loader script */
   sprintf((char *)addr,
@@ -100,7 +101,8 @@ int LoaderExec(char *cmd, char *params, char *vc, l4_os3_task_t *taskid)
           "\"  \"%s "
           "%s"
           "\""
-          "\n\n  priority 0xA0",
+          "\n\n  allow_cli\n"
+          "  priority 0xA0",
           cmd, str, parm);
 
   /* detach dataspace */

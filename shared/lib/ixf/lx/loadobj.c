@@ -154,12 +154,21 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj * lx_obj)
         if (lx_obj == stack_obj)
 	{
 	  ixfSysDep->stack_high = (void *)(lx_obj->o32_base + get_esp(lx_exe_mod));
-	  ixfSysDep->stack_low  = (void *)((unsigned long long)ixfSysDep->stack_high - lx_exe_mod->lx_head_e32_exe->e32_stacksize);
+	  ixfSysDep->stack_low  = (void *)((unsigned long long)ixfSysDep->stack_high + lx_exe_mod->lx_head_e32_exe->e32_stacksize);
 	  ixfModule->Stack = ixfSysDep->stack_high;
+          io_log("@@@: stack_low: %x\n", ixfSysDep->stack_low);
+          io_log("@@@: stack_high: %x\n", ixfSysDep->stack_high);
+          io_log("@@@: o32_base: %x\n", lx_obj->o32_base);
+          io_log("@@@: esp: %x\n", get_esp(lx_exe_mod));
 	}
         if (lx_obj == code_obj)
+        {
 	  ixfModule->EntryPoint = (void *)(lx_obj->o32_base + get_eip(lx_exe_mod));
-	  
+          io_log("@@@: eip: %x\n", ixfModule->EntryPoint);
+          io_log("@@@: o32_base: %x\n", lx_obj->o32_base);
+          io_log("@@@: eip: %x\n", get_eip(lx_exe_mod));
+        }
+	
 	section = (l4_os3_section_t *)malloc(sizeof(l4_os3_section_t));
         io_log("section=%x\n", section);
 	s = (slist_t *)malloc(sizeof(slist_t));
@@ -197,35 +206,42 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj * lx_obj)
 int load_obj_lx(struct LX_module * lx_exe_mod,
                                 struct o32_obj * lx_obj, void *vm_ptr_obj)
 {
-  unsigned long int tmp_code;
-  unsigned long int tmp_vm;
-  unsigned long int tmp_vm_code;
-  struct o32_map * obj_pg_sta;
-  int ofs_page_sta;
-  int startpage = lx_obj->o32_pagemap;
-  int lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
-  unsigned int data_pages_offs =  get_e32_datapage(lx_exe_mod);
-  unsigned int code_mmap_pos = 0;
-  int page_nr=0;
+  unsigned long tmp_code;
+  void         *tmp_vm;
+  void         *tmp_vm_code;
+  struct o32_map *obj_pg_sta;
+  unsigned long ofs_page_sta;
+  unsigned long startpage = lx_obj->o32_pagemap;
+  unsigned long lastpage  = lx_obj->o32_pagemap + lx_obj->o32_mapsize;
+  unsigned long data_pages_offs =  get_e32_datapage(lx_exe_mod);
+  unsigned long code_mmap_pos = 0;
+  unsigned long page_nr=0;
 
   /*struct o32_map * obj_pg_ett = get_obj_map(lx_exe_mod ,startpage);*/
   /*  Reads in all pages from kodobject to designated virtual memory. */
   for(page_nr=startpage; page_nr<lastpage; page_nr++)
   {
-    obj_pg_sta = get_obj_map(lx_exe_mod ,page_nr);
+    obj_pg_sta = get_obj_map(lx_exe_mod, page_nr);
     ofs_page_sta = (obj_pg_sta->o32_pagedataoffset << get_e32_pageshift(lx_exe_mod))
                                                                 + data_pages_offs;
 
     lx_exe_mod->lx_fseek(lx_exe_mod, ofs_page_sta, SEEK_SET);
 
-    tmp_code = (unsigned long int) code_mmap_pos;
-    tmp_vm = (unsigned long int) vm_ptr_obj;
-    tmp_vm_code = tmp_code + tmp_vm;
+    tmp_code = code_mmap_pos;
+    tmp_vm = vm_ptr_obj;
+    tmp_vm_code = tmp_vm + tmp_code;
 
-    lx_exe_mod->lx_fread((void *)tmp_vm_code,
+    lx_exe_mod->lx_fread(tmp_vm_code,
                          obj_pg_sta->o32_pagesize, 1, lx_exe_mod);
-    code_mmap_pos += obj_pg_sta->o32_pagesize;
+
+    // pad page tail with zeroes
+    memset(tmp_vm_code + obj_pg_sta->o32_pagesize, 0, 0x1000 - obj_pg_sta->o32_pagesize);
+
+    code_mmap_pos += 0x1000; ////obj_pg_sta->o32_pagesize;
+
+    io_log("@@@: page size: %x\n", obj_pg_sta->o32_pagesize);
   }
+
   return 0;
 }
 
@@ -254,34 +270,100 @@ int do_fixup_code_data_lx(struct LX_module * lx_exe_mod, int *ret_rc)
 /* Internal Fixup*/
 void apply_internal_fixup(struct LX_module * lx_exe_mod, struct r32_rlc * min_rlc, unsigned long int vm_start_of_page)
 {
+    unsigned long * ptr_source; // Address to fixup
+    short srcoff_cnt1;
+    int addit = 0;
+    int additive_size = 0;
+    int object1;
+    //int trgoffs;
+    struct o32_obj * target_object;
+    unsigned long vm_start_target_obj;
+    unsigned long vm_source;
+    unsigned long vm_target;
+    int i, cnt;
 
-  unsigned long int * ptr_source; // Address to fixup
-  int srcoff_cnt1;
-  int addit;
-  int object1;
-  //int trgoffs;
-  struct o32_obj * target_object;
-  unsigned long int vm_start_target_obj;
-  unsigned long int vm_source;
-  unsigned long int vm_target;
+    if (min_rlc->nr_flags & 0x04) // additive present
+        additive_size = 2;
 
-  srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
-  object1 = get_mod_ord1_rlc(min_rlc); /* On the same offset as Object1. */
-  //trgoffs = get_trgoff_size(min_rlc);
-  addit = get_additive_rlc(min_rlc);
+    if (min_rlc->nr_flags & 0x20) // 32-bit additive field
+        additive_size = 4;
 
-  target_object = get_obj(lx_exe_mod, object1);
-  vm_start_target_obj = target_object->o32_reserved;
-  //vm_start_target_obj = target_object->o32_base;
+    if (additive_size)
+        addit = get_additive_rlc(min_rlc);
 
-  /* Get address of target offset and put in source offset. */
-  vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc)/*trgoffs*/;
-  vm_source = vm_start_of_page + srcoff_cnt1;
+    //addit = 0;
 
-  io_log("!source=%x, target=%x, addit=%d\n", vm_source, vm_target, addit);
+    if (min_rlc->nr_stype & NRCHAIN)
+    {
+        int trg_off_size = 0;
+        int object_size = 0;
 
-  ptr_source = (unsigned long int *)vm_source;
-  *ptr_source = vm_target;
+        if (min_rlc->nr_flags & 0x10) // 32-bit target offset flag
+            trg_off_size = 4;
+        else
+            trg_off_size = 2;
+
+        if ( (min_rlc->nr_stype & NRSRCMASK) == 0x02) // 16-bit selector fixup
+            trg_off_size = 0;
+
+        if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
+            object_size = 2;
+        else
+            object_size = 1;
+
+        short *srcoff = (unsigned short *)
+            ((char *)min_rlc + 3 * 1 + object_size + trg_off_size + additive_size);
+
+        object1 = get_mod_ord1_rlc(min_rlc); /* On the same offset as Object1. */
+        //trgoffs = get_trgoff_size(min_rlc);
+
+        target_object = get_obj(lx_exe_mod, object1);
+        vm_start_target_obj = target_object->o32_reserved;
+        //vm_start_target_obj = target_object->o32_base;
+
+        /* Get address of target offset and put in source offset. */
+        vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit/*trgoffs*/;
+        cnt = get_srcoff_cnt1_rlc(min_rlc);
+
+        io_log("!src=%02x, trg=%02x, cnt=%02x, obj#=%02x, trgoff=%04x, addit=%d\nsrcoffs = ",
+                min_rlc->nr_stype, min_rlc->nr_flags, cnt,
+                min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
+
+        for (i = 0; i < cnt; i++)
+        {
+            srcoff_cnt1 = srcoff[i];
+
+            vm_source = vm_start_of_page + srcoff_cnt1;
+            ptr_source = (unsigned long *)vm_source;
+
+            io_log("%04x ", srcoff_cnt1);
+
+            *ptr_source = vm_target;
+        }
+
+        io_log("\n");
+    }
+    else
+    {
+        srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
+        object1 = get_mod_ord1_rlc(min_rlc); /* On the same offset as Object1. */
+        //trgoffs = get_trgoff_size(min_rlc);
+
+        target_object = get_obj(lx_exe_mod, object1);
+        vm_start_target_obj = target_object->o32_reserved;
+        //vm_start_target_obj = target_object->o32_base;
+
+        /* Get address of target offset and put in source offset. */
+        vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit/*trgoffs*/;
+        vm_source = vm_start_of_page + srcoff_cnt1;
+
+        io_log("!src=%02x, trg=%02x, srcoff=%04x, obj#=%02x, trgoff=%04x, addit=%d\n",
+                min_rlc->nr_stype, min_rlc->nr_flags, srcoff_cnt1,
+                min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
+
+        ptr_source = (unsigned long *)vm_source;
+        *ptr_source = vm_target;
+    }
 }
 
 
@@ -370,7 +452,8 @@ int do_fixup_obj_lx(struct LX_module * lx_exe_mod,
   //struct LX_module *found_module;
   //int trgoffs;
   //int object1;
-  ////int addit;
+  ////int addit = 0;
+  ////int additive_size = 0;
   ////int srcoff_cnt1;
   ////int fixup_source_flag;
   int fixup_source;
@@ -415,7 +498,7 @@ int do_fixup_obj_lx(struct LX_module * lx_exe_mod,
 
     /*
     This loop traverses the fixups and increases
-    the pointer min_rlc with the size of previoues fixup.
+    the pointer min_rlc with the size of previous fixup.
     while(min_rlc is within the offset of current page) {
     */
     while(fixup_offset < pg_end_offs_fix)

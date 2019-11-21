@@ -1199,6 +1199,7 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
     //  relative_jmp = 0xffffffff-((unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress) - (unsigned long)(ixfModule->Fixups[imports_counter].ImportEntry.Address))-3;
 
     io_log("jmp=%x=%x\n", (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress), relative_jmp);
+    io_log("SrcVmAddress=%x\n", (unsigned long)ixfModule->Fixups[imports_counter].SrcVmAddress);
     *((unsigned long *) ixfModule->Fixups[imports_counter].SrcVmAddress) = relative_jmp;
   }
 }
