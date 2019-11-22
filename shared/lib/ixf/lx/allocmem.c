@@ -29,7 +29,7 @@ void *allocmem(unsigned long long area,
 
     if (rc)
     {
-      return NULL;
+        return NULL;
     }
 
     rc = RegAreaAttach(&addr, size, (unsigned long)area,
@@ -37,7 +37,7 @@ void *allocmem(unsigned long long area,
 
     if (rc)
     {
-      return NULL;
+        return NULL;
     }
 
     return addr;
@@ -52,22 +52,22 @@ int translate_os2_flags(int flags)
 
     if (flags & PAG_COMMIT)
     {
-      rights |= DATASPACE_MAP;
+        rights |= DATASPACE_MAP;
     }
 
     if (flags & PAG_EXECUTE)
     {
-      rights |= DATASPACE_READ;
+        rights |= DATASPACE_READ;
     }
 
     if ( (flags & PAG_READ) && ! (flags & PAG_WRITE) )
     {
-      rights |= DATASPACE_WRITE;
+        rights |= DATASPACE_WRITE;
     }
 
     if (flags & PAG_WRITE)
     {
-      rights |= DATASPACE_WRITE;
+        rights |= DATASPACE_WRITE;
     }
 
     return rights;

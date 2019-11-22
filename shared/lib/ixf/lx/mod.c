@@ -30,61 +30,71 @@
 #include <unistd.h>
 #include <string.h>
 
-int LXLoadHeader(struct LX_module * lx_mod);
-int LXLoadLoaderSection(struct LX_module * lx_mod);
-int LXLoadFixupSection(struct LX_module * lx_mod);
+int LXLoadHeader(struct LX_module *lx_mod);
+int LXLoadLoaderSection(struct LX_module *lx_mod);
+int LXLoadFixupSection(struct LX_module *lx_mod);
 
 struct o32_obj *
-    get_data_stack(struct LX_module * lx_mod);
-int get_data_stack_num(struct LX_module * lx_mod);
+    get_data_stack(struct LX_module *lx_mod);
+int get_data_stack_num(struct LX_module *lx_mod);
 unsigned long
-    get_esp(struct LX_module * lx_mod);
+    get_esp(struct LX_module *lx_mod);
 struct o32_map *
-    get_obj_page_tbl(struct LX_module * lx_mod);
+    get_obj_page_tbl(struct LX_module *lx_mod);
 struct o32_map *
-    get_obj_map(struct LX_module * lx_mod, unsigned int nr);
-int get_ldrsize(struct LX_module * lx_mod);
-int get_fixupsize(struct LX_module * lx_mod);
+    get_obj_map(struct LX_module *lx_mod, unsigned int nr);
+int get_ldrsize(struct LX_module *lx_mod);
+int get_fixupsize(struct LX_module *lx_mod);
 void print_o32_obj_info(struct o32_obj o_obj, const char *namn);
-int get_fixup_pg_tbl_offs(struct LX_module * lx_mod, int logisk_sida);
+int get_fixup_pg_tbl_offs(struct LX_module *lx_mod, int logisk_sida);
 struct r32_rlc *
-    get_fixup_rec_tbl_obj(struct LX_module * lx_mod, int offs);
-void print_struct_r32_rlc_info(struct r32_rlc * rlc);
-int get_srcoff_cnt1_rlc(struct r32_rlc * rlc);
-int get_mod_ord1_rlc(struct r32_rlc * rlc);
-int get_imp_ord1_rlc(struct r32_rlc * rlc);
-char * get_imp_mod_name(struct LX_module * lx_mod, int mod_idx);
+    get_fixup_rec_tbl_obj(struct LX_module *lx_mod, int offs);
+void print_struct_r32_rlc_info(struct r32_rlc *rlc);
+int get_srcoff_cnt1_rlc(struct r32_rlc *rlc);
+int get_mod_ord1_rlc(struct r32_rlc *rlc);
+int get_imp_ord1_rlc(struct r32_rlc *rlc);
+char * get_imp_mod_name(struct LX_module *lx_mod, int mod_idx);
 
-int get_e32_pageshift(struct LX_module * lx_mod);
-char *get_imp_proc_name_2(struct LX_module * lx_mod, int proc_idx);
- 
+int get_e32_pageshift(struct LX_module *lx_mod);
+char *get_imp_proc_name_2(struct LX_module *lx_mod, int proc_idx);
+
 
 /* fseek(fh, 0, SEEK_SET);
    SEEK_SET move filepos relative to beginning of the file
    SEEK_END move filepos relative to the end of file,
    SEEK_CUR move filepos from current position.
    int fseek(FILE *stream, long offset, int whence); */
-/* This does does a fseek on a memory buffer. So simulate the behavior.*/
-int lx_fseek_stream(struct LX_module * lx_mod, int pos, int direction) {
-        if((direction == SEEK_SET) && (pos <= lx_mod->lx_stream_size) && (pos >= 0)) {
-                lx_mod->lx_stream_pos = pos;
-                return lx_mod->lx_stream_pos;
-        }
-        if((direction == SEEK_END) && (pos <= lx_mod->lx_stream_size) && (pos >= 0)) {
-                lx_mod->lx_stream_pos = lx_mod->lx_stream_size - pos;
-                return lx_mod->lx_stream_pos;
-        }
-        if((direction == SEEK_CUR) && (pos <= lx_mod->lx_stream_size) && (pos >= 0)) {
-                lx_mod->lx_stream_pos = lx_mod->lx_stream_pos + pos;
-                return lx_mod->lx_stream_pos;
-        }
-        return -1;
+/* This does does a fseek on a memory buffer. So simulate the behavior. */
+int lx_fseek_stream(struct LX_module *lx_mod, int pos, int direction)
+{
+    if ((direction == SEEK_SET) && (pos <= lx_mod->lx_stream_size) && (pos >= 0))
+    {
+        lx_mod->lx_stream_pos = pos;
+        return lx_mod->lx_stream_pos;
+    }
+
+    if ((direction == SEEK_END) && (pos <= lx_mod->lx_stream_size) && (pos >= 0))
+    {
+        lx_mod->lx_stream_pos = lx_mod->lx_stream_size - pos;
+        return lx_mod->lx_stream_pos;
+    }
+
+    if ((direction == SEEK_CUR) && (pos <= lx_mod->lx_stream_size) && (pos >= 0))
+    {
+        lx_mod->lx_stream_pos = lx_mod->lx_stream_pos + pos;
+        return lx_mod->lx_stream_pos;
+    }
+
+
+    return -1;
 }
 
 /* Just do an ordinary fseek. */
-int lx_fseek_disk_file(struct LX_module * lx_mod, int pos, int direction) {
-        return fseek(lx_mod->fh, pos, direction);
+int lx_fseek_disk_file(struct LX_module *lx_mod, int pos, int direction)
+{
+    return fseek(lx_mod->fh, pos, direction);
 }
+
 /*
 lx_mod->lx_fread(&exe_sig, 1, sizeof(exe_sig), lx_mod);
 size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream);
@@ -92,63 +102,71 @@ The  function  fread()  reads  nmemb elements of data, each size bytes long, fro
        stream pointed to by stream, storing them at the location given by ptr.
 */
 size_t lx_fread_stream(void *ptr, size_t size, size_t nmemb,
-                                                struct LX_module * lx_mod) {
-        unsigned int i;
-        unsigned long long tmp_ptr;
-
-        for(i=0; i<nmemb; i++) {
-                /* lx_file_stream lx_stream_size lx_stream_pos */
-                /* io_log("memcpy(%p, %p, %d)\n",ptr, &lx_mod->lx_file_stream[lx_mod->lx_stream_pos], size);
-                 io_log("nmenb=%d\n", nmemb); */
-
-                memcpy(ptr, &lx_mod->lx_file_stream[lx_mod->lx_stream_pos], size);
-                lx_mod->lx_stream_pos += size;
-                tmp_ptr = (unsigned long long) ptr;
-                tmp_ptr += size;
-                ptr = (void *) tmp_ptr;
-        }
-        return i;
-}
-size_t lx_fread_disk_file(void *ptr, size_t size, size_t nmemb,
-                                                struct LX_module * lx_mod) {
-        return fread(ptr, size, nmemb, lx_mod->fh);
-}
-
-
-        /*
-        Reads the lx file from filehandle fh into structure lx_mod.
-        Constructor for disk based file.
-        */
-struct LX_module *
-load_lx(FILE* fh, struct LX_module * lx_mod)
+                       struct LX_module *lx_mod)
 {
-        int fstorlek;
+    unsigned int i;
+    unsigned long long tmp_ptr;
 
-        lx_mod->lx_head_e32_exe = 0;
-        lx_mod->offs_lx_head = 0;
-        lx_mod->lx_file_stream = 0; /* Zero out the memory buffer, which is not used here. */
-        lx_mod->fh = fh;
-        lx_mod->lx_fseek = &lx_fseek_disk_file;
-        lx_mod->lx_fread = &lx_fread_disk_file;
-        //io_log("Load from filehandle: %p \n", fh);
+    for (i = 0; i < nmemb; i++)
+    {
+        /* lx_file_stream lx_stream_size lx_stream_pos */
+        /* io_log("memcpy(%p, %p, %d)\n",ptr, &lx_mod->lx_file_stream[lx_mod->lx_stream_pos], size);
+        io_log("nmenb=%d\n", nmemb); */
 
-        /* Find out size of file. */
-        fstorlek = fseek(fh, 0, SEEK_END);
-        fstorlek = fstorlek;
-        fseek(fh, 0, SEEK_SET);
+        memcpy(ptr, &lx_mod->lx_file_stream[lx_mod->lx_stream_pos], size);
+        lx_mod->lx_stream_pos += size;
+        tmp_ptr = (unsigned long long) ptr;
+        tmp_ptr += size;
+        ptr = (void *) tmp_ptr;
+    }
 
 
-        if(LXLoadHeader(lx_mod)) {
-                //io_log("Succeeded to load LX header.\n");
-                LXLoadLoaderSection(lx_mod);
-                LXLoadFixupSection(lx_mod);
-        }
-        else {
-                io_log("Could not load LX header!!!!\n");
-                return 0;
-        }
+    return i;
+}
 
-        return lx_mod;
+size_t lx_fread_disk_file(void *ptr, size_t size, size_t nmemb,
+                          struct LX_module *lx_mod)
+{
+    return fread(ptr, size, nmemb, lx_mod->fh);
+}
+
+
+/*
+    Reads the lx file from filehandle fh into structure lx_mod.
+    Constructor for disk based file.
+*/
+struct LX_module *
+load_lx(FILE *fh, struct LX_module *lx_mod)
+{
+    int fstorlek;
+
+    lx_mod->lx_head_e32_exe = 0;
+    lx_mod->offs_lx_head = 0;
+    lx_mod->lx_file_stream = 0; /* Zero out the memory buffer, which is not used here. */
+    lx_mod->fh = fh;
+    lx_mod->lx_fseek = &lx_fseek_disk_file;
+    lx_mod->lx_fread = &lx_fread_disk_file;
+    //io_log("Load from filehandle: %p \n", fh);
+
+    /* Find out size of file. */
+    fstorlek = fseek(fh, 0, SEEK_END);
+    fstorlek = fstorlek;
+    fseek(fh, 0, SEEK_SET);
+
+    if ( LXLoadHeader(lx_mod) )
+    {
+        //io_log("Succeeded to load LX header.\n");
+        LXLoadLoaderSection(lx_mod);
+        LXLoadFixupSection(lx_mod);
+    }
+    else
+    {
+        io_log("Could not load LX header!\n");
+        return 0;
+    }
+
+
+    return lx_mod;
 }
 
 
@@ -203,220 +221,241 @@ Några OS/2 exe-filer:
            Gets an o32_obj for a object. An o32_obj describes an object
            it's virtuall addressize, relocatable base address, flaggs,
            page table index, number of pages in Object Page Table. First element starts at one. */
-struct o32_obj *
-get_obj(struct LX_module * lx_mod, unsigned int nr) {
-        struct o32_obj * obj_ent = (struct  o32_obj *) lx_mod->loader_section;
-        return &obj_ent[nr-1];
+struct o32_obj *get_obj(struct LX_module *lx_mod, unsigned int nr)
+{
+    struct o32_obj *obj_ent = (struct  o32_obj *)lx_mod->loader_section;
+    return &obj_ent[nr - 1];
 }
 
 
-unsigned long int
-get_obj_num(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_objcnt;
+unsigned long int get_obj_num(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_objcnt;
 }
 
   /* Get the number of elements in Object Page Table */
-int get_obj_map_num(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_mpages;
+int get_obj_map_num(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_mpages;
 }
 
 
-struct o32_obj *
-get_code(struct LX_module * lx_mod) {
-        if(lx_mod->lx_head_e32_exe->e32_startobj == 0) {
-                if (options.debugixfmgr) 
-                {
-                  io_log("Invalid start object for code ==0\n");
-                }
-                return (struct o32_obj *)0;
+struct o32_obj *get_code(struct LX_module *lx_mod)
+{
+    if (lx_mod->lx_head_e32_exe->e32_startobj == 0)
+    {
+        if (options.debugixfmgr) 
+        {
+            io_log("Invalid start object for code ==0\n");
         }
-        return get_obj(lx_mod, lx_mod->lx_head_e32_exe->e32_startobj);
+
+        return (struct o32_obj *)0;
+    }
+
+    return get_obj(lx_mod, lx_mod->lx_head_e32_exe->e32_startobj);
 }
 
 
-unsigned long int
-get_code_num(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_startobj;
+unsigned long int get_code_num(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_startobj;
 }
 
 
-unsigned long
-get_eip(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_eip;
+unsigned long get_eip(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_eip;
 }
 
 
-struct o32_obj *
-get_data_stack(struct LX_module * lx_mod) {
-        if((lx_mod->lx_head_e32_exe->e32_stackobj == 0) ||
-                (lx_mod->lx_head_e32_exe->e32_stackobj > get_obj_num(lx_mod))) {
-                if (options.debugixfmgr) 
-                {
-                  io_log("Invalid data/stack object ==%lu, max=%lu\n",
-                                  lx_mod->lx_head_e32_exe->e32_stackobj,
-                                  get_obj_num(lx_mod));
-                }
-                return (struct o32_obj *)0;
+struct o32_obj *get_data_stack(struct LX_module *lx_mod)
+{
+    if ((lx_mod->lx_head_e32_exe->e32_stackobj == 0) ||
+        (lx_mod->lx_head_e32_exe->e32_stackobj > get_obj_num(lx_mod)))
+    {
+        if (options.debugixfmgr)
+        {
+            io_log("Invalid data/stack object=%lu, max=%lu\n",
+                   lx_mod->lx_head_e32_exe->e32_stackobj,
+                   get_obj_num(lx_mod));
         }
-        return get_obj(lx_mod, lx_mod->lx_head_e32_exe->e32_stackobj);
+
+        return (struct o32_obj *)0;
+    }
+
+    return get_obj(lx_mod, lx_mod->lx_head_e32_exe->e32_stackobj);
 }
 
 
-int get_data_stack_num(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_stackobj;
+int get_data_stack_num(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_stackobj;
 }
 
 
-unsigned long
-get_esp(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_esp;
+unsigned long get_esp(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_esp;
 }
 
 
-        /* Hämta pekare till Page Map Table.
-        Används så här:
-                struct o32_map * obj = get_obj_page_tbl( lx_module );
-                return obj[nr];*/
-struct o32_map *
-get_obj_page_tbl(struct LX_module * lx_mod) {
+/* Hämta pekare till Page Map Table.
+   Används så här:
+        struct o32_map *obj = get_obj_page_tbl( lx_module );
+        return obj[nr]; */
+struct o32_map *get_obj_page_tbl(struct LX_module *lx_mod)
+{
+    int storlek_lx_hdr = sizeof(*(lx_mod->lx_head_e32_exe)); /* Storlek på LX huvudet.*/
+    /*lx_mod->e32_objmap             Position på Page Map Table från början av LX huvudet. */
 
-        int storlek_lx_hdr = sizeof(*(lx_mod->lx_head_e32_exe)); /* Storlek på LX huvudet.*/
-        /*lx_mod->e32_objmap             Position på Page Map Table från början av LX huvudet. */
+    int pg_tbl_off = lx_mod->lx_head_e32_exe->e32_objmap - storlek_lx_hdr;
 
-        int pg_tbl_off = lx_mod->lx_head_e32_exe->e32_objmap - storlek_lx_hdr;
-
-        struct o32_map * obj_ent = (struct o32_map *) &lx_mod->loader_section[pg_tbl_off];
-        return obj_ent;//obj_ent->o32_pagesize;obj_ent->o32_pagedataoffset;
-}                                  //obj_ent->o32_pageflags;
+    struct o32_map *obj_ent = (struct o32_map *)&lx_mod->loader_section[pg_tbl_off];
+    return obj_ent; //obj_ent->o32_pagesize;obj_ent->o32_pagedataoffset;
+}                   //obj_ent->o32_pageflags;
 
 
 /* Hämta ett objekt från Object Page Table.*/
-struct o32_map *
-get_obj_map(struct LX_module * lx_mod, unsigned  int nr) {
-        struct o32_map * obj_ent = (struct  o32_map *) get_obj_page_tbl(lx_mod);
-        return &obj_ent[nr-1];
+struct o32_map *get_obj_map(struct LX_module *lx_mod, unsigned int nr)
+{
+    struct o32_map *obj_ent = (struct  o32_map *) get_obj_page_tbl(lx_mod);
+    return &obj_ent[nr - 1];
 }
 
 
-int get_ldrsize(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_ldrsize;
+int get_ldrsize(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_ldrsize;
 }
 
 
-int get_fixupsize(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_fixupsize;
+int get_fixupsize(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_fixupsize;
 }
 
 
 void print_o32_obj_info(struct o32_obj o_obj, const char *name)
 {
-  io_log("%s: virtual memory size              = %08XH\n", name, O32_SIZE(o_obj));
-  io_log("          relocation base address          = %08XH\n", O32_BASE(o_obj));
-  io_log("          object flag bits                 = %08XH\n", O32_FLAGS(o_obj));
-  io_log("          object page table index          = %08XH\n", O32_PAGEMAP(o_obj));
-  io_log("          # of object page table entries   = %08XH\n", O32_MAPSIZE(o_obj));
-  io_log("          reserved                         = %08XH\n", O32_RESERVED(o_obj));
-  io_log("          flags = READABLE|EXECUTABLE|16:16_ALIAS\n");
-  io_log("\n");
+    io_log("%s: virtual memory size              = %08XH\n", name, O32_SIZE(o_obj));
+    io_log("          relocation base address          = %08XH\n", O32_BASE(o_obj));
+    io_log("          object flag bits                 = %08XH\n", O32_FLAGS(o_obj));
+    io_log("          object page table index          = %08XH\n", O32_PAGEMAP(o_obj));
+    io_log("          # of object page table entries   = %08XH\n", O32_MAPSIZE(o_obj));
+    io_log("          reserved                         = %08XH\n", O32_RESERVED(o_obj));
+    io_log("          flags = READABLE|EXECUTABLE|16:16_ALIAS\n");
+    io_log("\n");
 }
 
 /* Hämtar offset i fixuptabellen för en sida (logisk_sida). */
-int get_fixup_pg_tbl_offs(struct LX_module * lx_mod, int logisk_sida) {
-        int * i_ptr = (int *) lx_mod->fixup_section;
-        return i_ptr[logisk_sida-1];
+int get_fixup_pg_tbl_offs(struct LX_module *lx_mod, int logisk_sida)
+{
+    int *i_ptr = (int *)lx_mod->fixup_section;
+
+    return i_ptr[logisk_sida - 1];
 }
 
 /*struct r32_rlc                           Relocation item  */
 /* Hämtar en relokeringselement på offset i fixuptabellen. */
-struct r32_rlc * get_fixup_rec_tbl_obj(struct LX_module * lx_mod, int offs){
-        /*lx_mod->lx_head_e32_exe->e32_fpagetab 234 "Fixup Page Table Off"
-        //lx_mod->lx_head_e32_exe->e32_frectab  242 "Fixup Record Table Off" */
-        int offs_to_reloc_struct = lx_mod->lx_head_e32_exe->e32_frectab -
-          lx_mod->lx_head_e32_exe->e32_fpagetab;
-        return (struct r32_rlc *) &lx_mod->fixup_section[offs + offs_to_reloc_struct];
+struct r32_rlc *get_fixup_rec_tbl_obj(struct LX_module *lx_mod, int offs)
+{
+    /*lx_mod->lx_head_e32_exe->e32_fpagetab 234 "Fixup Page Table Off"
+    //lx_mod->lx_head_e32_exe->e32_frectab  242 "Fixup Record Table Off" */
+    int offs_to_reloc_struct = lx_mod->lx_head_e32_exe->e32_frectab -
+        lx_mod->lx_head_e32_exe->e32_fpagetab;
+    return (struct r32_rlc *)&lx_mod->fixup_section[offs + offs_to_reloc_struct];
 }
 
 /* Get's a name (pascal string) from Import Module Table at index in mod_idx.*/
-char * get_imp_mod_name(struct LX_module * lx_mod, int mod_idx)
+char *get_imp_mod_name(struct LX_module *lx_mod, int mod_idx)
 {
-  char * mod_name, *p;
-  long i;
+    char *mod_name, *p;
+    long i;
 
-  int offs_mod_table = lx_mod->lx_head_e32_exe->e32_impmod -
-                     lx_mod->lx_head_e32_exe->e32_fpagetab;
+    int offs_mod_table = lx_mod->lx_head_e32_exe->e32_impmod -
+        lx_mod->lx_head_e32_exe->e32_fpagetab;
 
-  mod_name=(&lx_mod->fixup_section[offs_mod_table]);
+    mod_name = &lx_mod->fixup_section[offs_mod_table];
 
-  io_log("mex3: mod_idx=%u, mod_name=", mod_idx);
+    io_log("mod_idx=%u, mod_name=", mod_idx);
 
-  for (p = mod_name; *p; p++)
-  {
-    if (*p < 9)
-      io_log("%c", *p + 0x30);
-    else
-      io_log("%c", *p);
-  }
+    for (p = mod_name; *p; p++)
+    {
+        if (*p < 9)
+            io_log("%c", *p + 0x30);
+        else
+            io_log("%c", *p);
+    }
 
-  io_log("\n");
+    io_log("\n");
 
-  for (i = 0;
-       i != (mod_idx-1);
-       i++)
-  {
-    mod_name=mod_name+(char)*mod_name+1;
-  }
+    for (i = 0;
+         i != (mod_idx-1);
+         i++)
+    {
+        mod_name=mod_name+(char)*mod_name+1;
+    }
 
-  return mod_name;
+    return mod_name;
 }
 
 
-char * get_imp_mod_name_cstr(struct LX_module * lx_mod, int mod_idx, char *buf, int len) {
+char *get_imp_mod_name_cstr(struct LX_module *lx_mod, int mod_idx, char *buf, int len)
+{
+    /* Get name of imported module. */
+    char *org_mod_name = get_imp_mod_name(lx_mod, mod_idx);
 
-                                        /* Get name of imported module. */
-        char * org_mod_name = get_imp_mod_name(lx_mod, mod_idx);
-        copy_pas_str(buf, org_mod_name);
-        return buf;
+    copy_pas_str(buf, org_mod_name);
+    return buf;
 }
 
 /* unsigned long       e32_impproc;    // Offset of Import Procedure Name Table */
 
-        /* Get a (pascal) string from Import Procedure Name Table. The names of imported functions. */
-char * get_imp_proc_name(struct LX_module * lx_mod, int proc_idx) {
-        int offs_imp_proc_table = lx_mod->lx_head_e32_exe->e32_impproc -
-                                                     lx_mod->lx_head_e32_exe->e32_fpagetab;
-        int c_len = lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
-        c_len = c_len;
-        if(proc_idx == 0) /* First entry is a null string, size zero. Skip it.*/
-                proc_idx = 1;
-        return &lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
+/* Get a (pascal) string from Import Procedure Name Table. The names of imported functions. */
+char *get_imp_proc_name(struct LX_module * lx_mod, int proc_idx)
+{
+    int offs_imp_proc_table = lx_mod->lx_head_e32_exe->e32_impproc -
+        lx_mod->lx_head_e32_exe->e32_fpagetab;
+    int c_len = lx_mod->fixup_section[offs_imp_proc_table + proc_idx];
 
+    /* First entry is a null string, size zero. Skip it.*/
+    if (proc_idx == 0)
+        proc_idx = 1;
+
+    return &lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
 }
 
 
-        /* Returns the size of an page. */
-int get_e32_pagesize(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_pagesize;
+/* Returns the size of an page. */
+int get_e32_pagesize(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_pagesize;
 }
 
 /* Gets the "Data Pages Offset". The position to where the "Object Pages" start. */
-int get_e32_datapage(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_datapage;
+int get_e32_datapage(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_datapage;
 }
 
 
-int get_e32_pageshift(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_pageshift;
+int get_e32_pageshift(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_pageshift;
 }
 
-        /* Copies an pascal string from src to dest. First byte in src is the lenght byte.
-           Make sure there is enough space in dest or it will probably misbehave.*/
-char * copy_pas_str(char * dest, char * src) {
-        int i=(int) src[0];
-        int j=0;
-        for(j=0; j<i; j++)
-                dest[j] = src[j+1];
-        dest[j] = (char) 0;
-        return dest;
+/* Copies an pascal string from src to dest. First byte in src is the lenght byte.
+   Make sure there is enough space in dest or it will probably misbehave.*/
+char *copy_pas_str(char *dest, char *src)
+{
+    int i = (int)src[0];
+    int j = 0;
+
+    for (j = 0; j < i; j++)
+        dest[j] = src[j + 1];
+
+    dest[j] = (char)0;
+    return dest;
 }
 
 
@@ -459,259 +498,294 @@ char * copy_pas_str(char * dest, char * src) {
   Returns data in the pointers beginning with "ret_*"
    */
 
-void * get_entry(struct LX_module * lx_mod, unsigned long entry_ord_to_search,
-                                        unsigned long * ret_flags,
-                                        unsigned long * ret_offset,
-                                        unsigned long * ret_obj,
-                                        unsigned long * ret_modord,
-                                        unsigned long * ret_type) {
+void *get_entry(struct LX_module *lx_mod, unsigned long entry_ord_to_search,
+                unsigned long *ret_flags,
+                unsigned long *ret_offset,
+                unsigned long *ret_obj,
+                unsigned long *ret_modord,
+                unsigned long *ret_type)
+{
+    enum
+    {
+        UNUSED_ENTRY_SIZE = 2,
+        _16BIT_ENTRY_SIZE = 3,
+        ENTRY_HEADER_SIZE = 4, /* For all entries except UNUSED ENTRY.*/
+        _286_CALL_GATE_ENTRY_SIZE = 5,
+        _32BIT_ENTRY_SIZE         = 5,
+        FORWARD_ENTRY_SIZE        = 7
+    };
 
-        enum
+    /* For testing: lx_mod is null and ret_type contains a pointer to some entry table.*/
+    unsigned long offs_to_entry_tbl;
+    struct b32_bundle *entry_table,
+                      *prev_entry_table = 0;
+    char *cptr_ent_tbl;
+    struct e32_entry *entry_post;
+    unsigned char * magic;
+    ////char bbuf[3];
+    unsigned long entry_ord_index;
+    unsigned long prev_ord_index = 0;
+    unsigned long unused_entry;
+    unsigned long i_cptr_ent_tbl;
+    unsigned long elements_in_bundle;
+
+    if (lx_mod != 0)
+    {
+        /* Offset to Entry Table inside the Loader Section. */
+        offs_to_entry_tbl = lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_objtab;
+
+        entry_table = (struct b32_bundle *)&lx_mod->loader_section[offs_to_entry_tbl];
+        cptr_ent_tbl = &lx_mod->loader_section[offs_to_entry_tbl];
+
+        magic = get_magic(lx_mod);
+        if ((magic[0] != 'L') && (magic[1] != 'X'))
+        {   /* Invalid module */
+            *ret_type = -1;
+            return (void *)0;
+        }
+
+        ////bbuf[0] = magic[0];
+        ////bbuf[1] = magic[1];
+        ////bbuf[2] = 0;
+        /*io_log("magic: %s \n", (char *)&bbuf);
+          io_log("get_entry( lx_mod: %p, entry_ord_to_search: %d \n",
+                 lx_mod, entry_ord_to_search); */
+    }
+    else
+    {
+        //io_log("Testing get_entry.\n");
+        cptr_ent_tbl = (char *)*ret_type;
+        entry_table = (struct b32_bundle *)cptr_ent_tbl;
+    }
+
+    entry_ord_index = 1;
+
+    /*io_log("entry_table: %p \n", entry_table);*/
+
+  /* io_log(
+      "get_entry: entry_ord_to_search: %d, b32_cnt: %d, b32_type: %d, b32_obj: %d\n",
+                  entry_ord_to_search,
+                  entry_table->b32_cnt, entry_table->b32_type, entry_table->b32_obj);
+   */
+
+  /* io_log("EMPTY: %d, ENTRYFWD: %d, _32BIT_ENTRY_SIZE: %d \n",
+             EMPTY, ENTRYFWD, _32BIT_ENTRY_SIZE);*/
+
+    unused_entry = 0;
+    while (entry_ord_index <= entry_ord_to_search)
+    {
+        while (entry_table->b32_type == EMPTY)
+        {   /* Unused Entry, just skip over them.*/
+            prev_ord_index = entry_ord_index;
+            entry_ord_index += entry_table->b32_cnt;
+            unused_entry += UNUSED_ENTRY_SIZE;
+            cptr_ent_tbl += UNUSED_ENTRY_SIZE;
+            entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            prev_entry_table = entry_table;
+            io_log("EMPTY, entry_table: %p\n", entry_table);
+        }
+
+        io_log("entry_ord_index: %d (0x%x), entry_ord_to_search: %d (0x%x)\n",
+               entry_ord_index,entry_ord_index,
+               entry_ord_to_search,entry_ord_to_search);
+
+        if (entry_ord_to_search < entry_ord_index)
         {
-          UNUSED_ENTRY_SIZE = 2,
-          _16BIT_ENTRY_SIZE = 3,
-          ENTRY_HEADER_SIZE = 4, /* For all entries except UNUSED ENTRY.*/
-          _286_CALL_GATE_ENTRY_SIZE = 5,
-          _32BIT_ENTRY_SIZE         = 5,
-          FORWARD_ENTRY_SIZE        = 7
-	};
-        /* For testing: lx_mod is null and ret_type contains a pointer to some entry table.*/
-        unsigned long offs_to_entry_tbl;
-        struct b32_bundle *entry_table,
-                          *prev_entry_table = 0;
-        char *cptr_ent_tbl;
-        struct e32_entry *entry_post;
-        unsigned char * magic;
-        ////char bbuf[3];
-        unsigned long entry_ord_index;
-        unsigned long prev_ord_index = 0;
-        unsigned long unused_entry;
-        unsigned long i_cptr_ent_tbl;
-        unsigned long elements_in_bundle;
+            if (prev_ord_index <= entry_ord_to_search)
+            {
+                entry_ord_index = prev_ord_index;
+                entry_table = prev_entry_table;
+                goto sw;
+            }
 
-        if(lx_mod != 0) {
+            *ret_flags = 0; // Unused entry ==0
+            *ret_offset = 0;
+            *ret_obj = 0;
+            *ret_type = 0;
 
-                /* Offset to Entry Table inside the Loader Section. */
-                offs_to_entry_tbl = lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_objtab;
-
-                entry_table = (struct b32_bundle *) &lx_mod->loader_section[offs_to_entry_tbl];
-                cptr_ent_tbl = &lx_mod->loader_section[offs_to_entry_tbl];
-
-                magic = get_magic(lx_mod);
-                if((magic[0] != 'L') && (magic[1] != 'X')) { /* Invalid module */
-                        *ret_type = -1;
-                        return (void *)0;
-                }
-
-                ////bbuf[0] = magic[0];
-                ////bbuf[1] = magic[1];
-                ////bbuf[2] = 0;
-                /*io_log("magic: %s \n", (char *)&bbuf);
-                  io_log("get_entry( lx_mod: %p, entry_ord_to_search: %d \n",
-                              lx_mod, entry_ord_to_search); */
-        }
-        else {
-                //io_log("Testing get_entry.\n");
-                cptr_ent_tbl = (char*) *ret_type;
-                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            io_log("RET, Can't find entry.\n");
+            io_log("entry_ord_index: %d, entry_ord_to_search: %d\n", entry_ord_index, entry_ord_to_search);
+            return (void *) 0; // Can't find entry.
         }
 
-        entry_ord_index=1;
+        if (entry_table->b32_cnt == 0)
+        {
+            //io_log("End of entry table reached! %d, entry_table: %p\n",
+            //                  entry_table->b32_cnt, entry_table);
+            *ret_flags = 0;
+            *ret_offset = 0;
+            *ret_obj = 0;
+            *ret_type = 0;
+            return (void *) 0; /* Invalid entry.*/
+        }
 
-        /*io_log("entry_table: %p \n", entry_table);*/
+    sw:
+        switch (entry_table->b32_type)
+        {
+            case EMPTY:;
+            case ENTRYFWD:;
+            case ENTRY32: break;
+            default:
+                io_log("Invalid entry type! %d, entry_table: %p\n",
+                       entry_table->b32_type, entry_table);
+                *ret_flags = 0;
+                *ret_offset = 0;
+                *ret_obj = 0;
+                *ret_type = 0;
+                return (void *) 0; /* Invalid entry. */
+        }
 
-      /*io_log(
-          "get_entry: entry_ord_to_search: %d, b32_cnt: %d, b32_type: %d, b32_obj: %d\n",
-                          entry_ord_to_search,
-                         entry_table->b32_cnt, entry_table->b32_type, entry_table->b32_obj);
+        /*io_log("get_entry,2nd bundle: cnt: %d, type: %d, obj: %d\n",
+                  entry_table->b32_cnt, entry_table->b32_type, entry_table->b32_obj);     */
+        /* If ordinal to search for is less than present index ordinal and
+           ordinal to search for is less than the number of ordinals plus current index ordinal and
+           the type of bundle is 32-bit entry.
          */
+//         if((entry_ord_to_search >= entry_ord_index)
+//            && (entry_ord_to_search<(entry_table->b32_cnt+entry_ord_index))
+//            &&  (entry_table->b32_type == ENTRY32))
+        if ((entry_ord_to_search <= entry_ord_index)
+             && (entry_ord_index - entry_ord_to_search <= entry_table->b32_cnt)
+             &&  (entry_table->b32_type == ENTRY32))
+        { /* 32-bit Entry.*/
+            //io_log("32-bit Entry.\n");
+            cptr_ent_tbl = (char *)entry_table;
+            cptr_ent_tbl += ENTRY_HEADER_SIZE;
+            entry_post = (struct e32_entry *)cptr_ent_tbl;
+            i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+            elements_in_bundle = entry_table->b32_cnt + entry_ord_index;
 
-        /*io_log("EMPTY: %d, ENTRYFWD: %d, _32BIT_ENTRY_SIZE: %d \n",
-          EMPTY, ENTRYFWD, _32BIT_ENTRY_SIZE);*/
+            for (; entry_ord_index < elements_in_bundle; entry_ord_index++)
+            {
+                io_log("(entry_ord_to_search %d == entry_ord_index %d)\n",
+                       entry_ord_to_search, entry_ord_index);
 
-        unused_entry = 0;
-        while(entry_ord_index <= entry_ord_to_search) {
-                while (entry_table->b32_type == EMPTY) { /* Unused Entry, just skip over them.*/
-                        prev_ord_index = entry_ord_index;
-                        entry_ord_index += entry_table->b32_cnt;
-                        unused_entry += UNUSED_ENTRY_SIZE;
-                        cptr_ent_tbl += UNUSED_ENTRY_SIZE;
-                        entry_table = (struct b32_bundle *)cptr_ent_tbl;
-                        prev_entry_table = entry_table;
-                        io_log("EMPTY, entry_table: %p\n", entry_table);
-                }
-                io_log("entry_ord_index: %d (0x%x), entry_ord_to_search: %d (0x%x)\n",
-                  entry_ord_index,entry_ord_index,
-                  entry_ord_to_search,entry_ord_to_search);
-                if(entry_ord_to_search < entry_ord_index) {
-                        if (prev_ord_index <= entry_ord_to_search)
-                        {
-                                entry_ord_index = prev_ord_index;
-                                entry_table = prev_entry_table;
-                                goto sw;
-                        }
-                        *ret_flags = 0; // Unused entry ==0
-                        *ret_offset = 0;
-                        *ret_obj = 0;
-                        *ret_type = 0;
-                        io_log("RET, Can't find entry.\n");
-                        io_log("entry_ord_index: %d, entry_ord_to_search: %d\n", entry_ord_index, entry_ord_to_search);
-                        return (void *) 0; // Can't find entry.
-                }
-                if(entry_table->b32_cnt == 0) {
-                       //io_log("End of entry table reached! %d, entry_table: %p\n",
-                       //                  entry_table->b32_cnt, entry_table);
-                                *ret_flags = 0;
-                                *ret_offset = 0;
-                                *ret_obj = 0;
-                                *ret_type = 0;
-                                return (void *) 0; /* Invalid entry.*/
-                }
-        sw:
-                switch(entry_table->b32_type) {
-                    case EMPTY:;
-                    case ENTRYFWD:;
-                    case ENTRY32: break;
-                        default: io_log("Invalid entry type! %d, entry_table: %p\n",
-                                         entry_table->b32_type, entry_table);
-                                *ret_flags = 0;
-                                *ret_offset = 0;
-                                *ret_obj = 0;
-                                *ret_type = 0;
-                                return (void *) 0; /* Invalid entry.*/
-                }
+                if (entry_ord_to_search == entry_ord_index)
+                    break;
 
+                i_cptr_ent_tbl += _32BIT_ENTRY_SIZE;
+            }
 
-                /*io_log("get_entry,2nd bundle: cnt: %d, type: %d, obj: %d\n",
-                                entry_table->b32_cnt, entry_table->b32_type, entry_table->b32_obj);     */
-                /* If ordinal to search for is less than present index ordinal and
-                   ordinal to search for is less than the number of ordinals plus current index ordinal and
-                   the type of bundle is 32-bit entry.
-                */
-//                if((entry_ord_to_search >= entry_ord_index)
-//                   && (entry_ord_to_search<(entry_table->b32_cnt+entry_ord_index))
-//                   &&  (entry_table->b32_type == ENTRY32))
-                if((entry_ord_to_search <= entry_ord_index)
-                   && (entry_ord_index - entry_ord_to_search <= entry_table->b32_cnt)
-                   &&  (entry_table->b32_type == ENTRY32))
-                { /* 32-bit Entry.*/
+            /* entry_ord_index += entry_table->b32_cnt;
+               i_cptr_ent_tbl += _32BIT_ENTRY_SIZE*entry_table->b32_cnt; */
 
-                                //io_log("32-bit Entry.\n");
-                                cptr_ent_tbl = (char*)entry_table;
-                                cptr_ent_tbl += ENTRY_HEADER_SIZE;
-                                entry_post = (struct e32_entry *)cptr_ent_tbl;
-                                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
-                                elements_in_bundle = entry_table->b32_cnt + entry_ord_index;
-                                for (; entry_ord_index < elements_in_bundle; entry_ord_index++)
-				{
-                                    io_log("(entry_ord_to_search %d == entry_ord_index %d)\n",
-                                              entry_ord_to_search, entry_ord_index);
-                                    if (entry_ord_to_search == entry_ord_index)
-                                                break;
-                                    i_cptr_ent_tbl += _32BIT_ENTRY_SIZE;
-                                }
-                                /*entry_ord_index += entry_table->b32_cnt;
-                                i_cptr_ent_tbl += _32BIT_ENTRY_SIZE*entry_table->b32_cnt;*/
+            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+            entry_post = (struct e32_entry *)cptr_ent_tbl;
+            //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
 
-                                cptr_ent_tbl = (char*)i_cptr_ent_tbl;
-                                entry_post = (struct e32_entry *)cptr_ent_tbl;
-                                //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
-
-                                //io_log("entry_post: %p \n", entry_post);
-                                //io_log("32-bit Entry: Flags=0x%x, Offset=%lu \n",
-                                //                entry_post->e32_flags, entry_post->e32_variant.e32_offset.offset32);
-                                *ret_flags = entry_post->e32_flags;
-                                *ret_offset = entry_post->e32_variant.e32_offset.offset32;
-                                *ret_obj = entry_table->b32_obj;
-                                *ret_type = entry_table->b32_type;
-                                return (void *) entry_table;
-
-                } else if (entry_table->b32_type == ENTRY32) { /* Jump over that bundle. */
-                        //io_log("ENTRY32\n")
-                        cptr_ent_tbl = (char*)entry_table;
-                        cptr_ent_tbl += ENTRY_HEADER_SIZE;
-                        //prev_ord_index = entry_ord_index;
-                        //prev_entry_table = entry_table;
-                        i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
-                        entry_ord_index += entry_table->b32_cnt;
-                        i_cptr_ent_tbl += _32BIT_ENTRY_SIZE*entry_table->b32_cnt;
-
-                        cptr_ent_tbl = (char*)i_cptr_ent_tbl;
-                        entry_table= (struct b32_bundle *)cptr_ent_tbl;
-                        io_log("ENTRY32, entry_table: %p\n", entry_table);
-                }
-
-                if((entry_ord_to_search >= entry_ord_index)
-                    && (entry_ord_to_search<(entry_table->b32_cnt+entry_ord_index))
-                    && (entry_table->b32_type == ENTRYFWD)) { /* Forward Entry.*/
-                        //io_log("Forward Entry.\n");
-                        cptr_ent_tbl = (char*)entry_table;
-                        //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
-                        entry_post = (struct e32_entry *)&cptr_ent_tbl[ENTRY_HEADER_SIZE];
-                        cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
-                        //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
-                                i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
-                                elements_in_bundle = entry_table->b32_cnt + entry_ord_index;
-                                for (; entry_ord_index < elements_in_bundle; entry_ord_index++) 
-				{
-                                    io_log("(entry_ord_to_search %d == entry_ord_index %d)\n",
-                                                        entry_ord_to_search, entry_ord_index);
-                                    if (entry_ord_to_search == entry_ord_index)
-                                           break;
-                                    i_cptr_ent_tbl += FORWARD_ENTRY_SIZE;
-                                }
-                                cptr_ent_tbl = (char*)i_cptr_ent_tbl;
-                                entry_post = (struct e32_entry *)cptr_ent_tbl;
-                        io_log("entry_post: %p \n", entry_post);
-                        io_log("Forward Entry: Flags=0x%x, Proc name offset or ordinal=%lu, Module ordinal number: %d \n",
-                                        entry_post->e32_flags,
-                                        entry_post->e32_variant.e32_fwd.value,
-                                        entry_post->e32_variant.e32_fwd.modord);
-                                 /* Flags */
-                        *ret_flags = entry_post->e32_flags;
-                         /* Procedure Name Offset or Import Ordinal Number */
-                        *ret_offset = entry_post->e32_variant.e32_fwd.value;
-                                /* Module ordinal */
-                        *ret_modord = entry_post->e32_variant.e32_fwd.modord;
-                                /* Not used */
-                        *ret_obj = entry_table->b32_obj;
-                                /* Entry type*/
-                        *ret_type = entry_table->b32_type;
-                         /* unsigned short  modord;     / Module ordinal number
-                unsigned long   value;      / Proc name offset or ordinal
-
-                                e32_fwd;        / Forwarder */
-                        return (void *) entry_table;
-                } else if(entry_table->b32_type == ENTRYFWD) { /* Jump over the that bundle. */
-                    //io_log("ENTRYFWD\n");
-
-                        cptr_ent_tbl = (char*)entry_table;
-                        //io_log("cptr_ent_tbl: %p\n", cptr_ent_tbl);
-                        cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
-                        //io_log("cptr_ent_tbl: %p\n", cptr_ent_tbl);
-                        i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
-                        entry_ord_index += entry_table->b32_cnt;
-                        //io_log("FORWARD_ENTRY_SIZE: %d, entry_table->b32_cnt: %d\n", FORWARD_ENTRY_SIZE, entry_table->b32_cnt);
-                        i_cptr_ent_tbl += FORWARD_ENTRY_SIZE*entry_table->b32_cnt;
-
-                        cptr_ent_tbl = (char*)i_cptr_ent_tbl;
-                        entry_table= (struct b32_bundle *)cptr_ent_tbl;
-                        //io_log("ENTRYFWD, entry_table: %p\n", entry_table);
-                }
-
+            //io_log("entry_post: %p \n", entry_post);
+            //io_log("32-bit Entry: Flags=0x%x, Offset=%lu \n",
+            //                entry_post->e32_flags, entry_post->e32_variant.e32_offset.offset32);
+            *ret_flags = entry_post->e32_flags;
+            *ret_offset = entry_post->e32_variant.e32_offset.offset32;
+            *ret_obj = entry_table->b32_obj;
+            *ret_type = entry_table->b32_type;
+            return (void *)entry_table;
         }
-        //io_log("RET, get_entry()\n");
-        return (void *) entry_table;
+        else if (entry_table->b32_type == ENTRY32)
+        {   /* Jump over that bundle. */
+            //io_log("ENTRY32\n")
+            cptr_ent_tbl = (char *)entry_table;
+            cptr_ent_tbl += ENTRY_HEADER_SIZE;
+            //prev_ord_index = entry_ord_index;
+            //prev_entry_table = entry_table;
+            i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+            entry_ord_index += entry_table->b32_cnt;
+            i_cptr_ent_tbl += _32BIT_ENTRY_SIZE * entry_table->b32_cnt;
+
+            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+            entry_table= (struct b32_bundle *)cptr_ent_tbl;
+
+            io_log("ENTRY32, entry_table: %p\n", entry_table);
+        }
+
+        if ((entry_ord_to_search >= entry_ord_index)
+            && (entry_ord_to_search<(entry_table->b32_cnt+entry_ord_index))
+            && (entry_table->b32_type == ENTRYFWD))
+        {   /* Forward Entry.*/
+            //io_log("Forward Entry.\n");
+            cptr_ent_tbl = (char *)entry_table;
+            //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
+            entry_post = (struct e32_entry *)&cptr_ent_tbl[ENTRY_HEADER_SIZE];
+            cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
+            //io_log("cptr_ent_tbl: %p \n", cptr_ent_tbl);
+            i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
+            elements_in_bundle = entry_table->b32_cnt + entry_ord_index;
+
+            for (; entry_ord_index < elements_in_bundle; entry_ord_index++) 
+            {
+                io_log("(entry_ord_to_search %d == entry_ord_index %d)\n",
+                        entry_ord_to_search, entry_ord_index);
+
+                if (entry_ord_to_search == entry_ord_index)
+                   break;
+
+                i_cptr_ent_tbl += FORWARD_ENTRY_SIZE;
+            }
+
+            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+            entry_post = (struct e32_entry *)cptr_ent_tbl;
+
+            io_log("entry_post: %p \n", entry_post);
+            io_log("Forward Entry: Flags=0x%x, Proc name offset or ordinal=%lu, Module ordinal number: %d \n",
+                    entry_post->e32_flags,
+                    entry_post->e32_variant.e32_fwd.value,
+                    entry_post->e32_variant.e32_fwd.modord);
+            /* Flags */
+            *ret_flags = entry_post->e32_flags;
+
+            /* Procedure Name Offset or Import Ordinal Number */
+            *ret_offset = entry_post->e32_variant.e32_fwd.value;
+
+            /* Module ordinal */
+            *ret_modord = entry_post->e32_variant.e32_fwd.modord;
+
+            /* Not used */
+            *ret_obj = entry_table->b32_obj;
+
+            /* Entry type*/
+            *ret_type = entry_table->b32_type;
+
+            /* unsigned short  modord;     / Module ordinal number
+               unsigned long   value;      / Proc name offset or ordinal
+
+            e32_fwd;        / Forwarder */
+            return (void *) entry_table;
+        }
+        else if (entry_table->b32_type == ENTRYFWD)
+        {   /* Jump over the that bundle. */
+            //io_log("ENTRYFWD\n");
+
+            cptr_ent_tbl = (char *)entry_table;
+            //io_log("cptr_ent_tbl: %p\n", cptr_ent_tbl);
+            cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
+            //io_log("cptr_ent_tbl: %p\n", cptr_ent_tbl);
+            i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
+            entry_ord_index += entry_table->b32_cnt;
+            //io_log("FORWARD_ENTRY_SIZE: %d, entry_table->b32_cnt: %d\n", FORWARD_ENTRY_SIZE, entry_table->b32_cnt);
+            i_cptr_ent_tbl += FORWARD_ENTRY_SIZE * entry_table->b32_cnt;
+
+            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+            entry_table= (struct b32_bundle *)cptr_ent_tbl;
+            //io_log("ENTRYFWD, entry_table: %p\n", entry_table);
+        }
+
+    }
+
+    //io_log("RET, get_entry()\n");
+    return (void *)entry_table;
 }
 
 /* Return the module flags. 0x8000 == library module*/
-unsigned long int get_mflags(struct LX_module * lx_mod) {
-        return lx_mod->lx_head_e32_exe->e32_mflags;
+unsigned long int get_mflags(struct LX_module *lx_mod)
+{
+    return lx_mod->lx_head_e32_exe->e32_mflags;
 }
 
-unsigned char * get_magic(struct LX_module * lx_mod) {
-        /* unsigned char       e32_magic[2];  */
-        return (unsigned char *)&lx_mod->lx_head_e32_exe->e32_magic;
+unsigned char * get_magic(struct LX_module *lx_mod)
+{
+    /* unsigned char       e32_magic[2];  */
+    return (unsigned char *)&lx_mod->lx_head_e32_exe->e32_magic;
 }
 
 
@@ -725,99 +799,103 @@ unsigned char * get_magic(struct LX_module * lx_mod) {
 
 
         /* Get a string from Import Procedure Name Table. */
-char * get_imp_proc_name_2(struct LX_module * lx_mod, int proc_idx) {
-        int offs_imp_proc_table = lx_mod->lx_head_e32_exe->e32_impproc -
-                                                     lx_mod->lx_head_e32_exe->e32_fpagetab;
-        int c_len = lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
-        c_len = c_len;
-        return &lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
+char *get_imp_proc_name_2(struct LX_module *lx_mod, int proc_idx)
+{
+    int offs_imp_proc_table = lx_mod->lx_head_e32_exe->e32_impproc -
+                              lx_mod->lx_head_e32_exe->e32_fpagetab;
+    int c_len = lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
 
+    return &lx_mod->fixup_section[offs_imp_proc_table+proc_idx];
 }
 
         /* Get the ordinal for the entry_name from the Resident Names Table. */
-int get_res_name_tbl_entry(struct LX_module * lx_mod, char *entry_name)
+int get_res_name_tbl_entry(struct LX_module *lx_mod, char *entry_name)
 {
-        int c_len;
-        char buf_name[255];
-        char *ptr_buf_name = (char *)&buf_name;
-        int entry_lenghts = 0;
-        int ordinal = 0;
+    int c_len;
+    char buf_name[255];
+    char *ptr_buf_name = (char *)&buf_name;
+    int entry_lenghts = 0;
+    int ordinal = 0;
 
-        int offs_res_name_table = lx_mod->lx_head_e32_exe->e32_restab -
-                                                                lx_mod->lx_head_e32_exe->e32_objtab;
-        int size_res_name_table = lx_mod->lx_head_e32_exe->e32_enttab -
-                                                                lx_mod->lx_head_e32_exe->e32_restab;
+    int offs_res_name_table = lx_mod->lx_head_e32_exe->e32_restab -
+                              lx_mod->lx_head_e32_exe->e32_objtab;
+    int size_res_name_table = lx_mod->lx_head_e32_exe->e32_enttab -
+                              lx_mod->lx_head_e32_exe->e32_restab;
+    io_log("Resident Names Table size: %d, 0x%x \n",
+            lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_restab,
+            lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_restab );
+    io_log("Resident Names Table offset: %d, 0x%x \n",
+            lx_mod->lx_head_e32_exe->e32_restab,
+            lx_mod->lx_head_e32_exe->e32_restab );
+    c_len = lx_mod->loader_section[offs_res_name_table];
 
-        io_log("Resident Names Table size: %d, 0x%x \n",
-                                lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_restab,
-                                lx_mod->lx_head_e32_exe->e32_enttab - lx_mod->lx_head_e32_exe->e32_restab );
-        io_log("Resident Names Table offset: %d, 0x%x \n",
-                                lx_mod->lx_head_e32_exe->e32_restab,
-                                lx_mod->lx_head_e32_exe->e32_restab );
-        c_len = lx_mod->loader_section[offs_res_name_table];
 
+    while (entry_lenghts < (size_res_name_table-1))
+    {
+        c_len = lx_mod->loader_section[offs_res_name_table + entry_lenghts];
+        copy_pas_str(ptr_buf_name,
+            (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts]);
 
-        while(entry_lenghts < (size_res_name_table-1)) {
-                c_len = lx_mod->loader_section[offs_res_name_table + entry_lenghts];
-                copy_pas_str(ptr_buf_name,
-                                        (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts]);
-                io_log(" Found: %s \n", ptr_buf_name);
+        io_log(" Found: %s \n", ptr_buf_name);
+        ordinal = *((unsigned short int*)&lx_mod->loader_section[
+                offs_res_name_table + c_len + 1 + entry_lenghts]);
+        io_log(" Found (ord): %d \n", ordinal);
 
-                ordinal = *((unsigned short int*)&lx_mod->loader_section[
-                                                        offs_res_name_table + c_len+1+entry_lenghts]);
-                io_log(" Found (ord): %d \n", ordinal);
-                if(strcmp(entry_name,ptr_buf_name)==0)
-                        return ordinal;
+        if(strcmp(entry_name,ptr_buf_name) == 0)
+            return ordinal;
 
-                entry_lenghts += c_len+1+2;
-                io_log("entry_lenghts: %d \n", entry_lenghts);
-        }
-        return 0; /* The ordinal is not found. */
+        entry_lenghts += c_len + 1 + 2;
+        io_log("entry_lenghts: %d \n", entry_lenghts);
+    }
+
+    return 0; /* The ordinal is not found. */
 }
 
-        /* Get the ordinal for the entry_name from the Non-resident Names Table.
-           If the table is not loaded, it is loaded and a pointer is saved in LX_module.
-        */
-int get_non_res_name_tbl_entry(struct LX_module * lx_mod, char *entry_name) {
+/* Get the ordinal for the entry_name from the Non-resident Names Table.
+   If the table is not loaded, it is loaded and a pointer is saved in LX_module.
+ */
+int get_non_res_name_tbl_entry(struct LX_module *lx_mod, char *entry_name)
+{
+    io_log("Non-resident Names Table size: %d, 0x%x \n",
+            lx_mod->lx_head_e32_exe->e32_cbnrestab,
+            lx_mod->lx_head_e32_exe->e32_cbnrestab );
+    io_log("Non-resident Names Table offset: %d, 0x%x \n",
+            lx_mod->lx_head_e32_exe->e32_nrestab,
+            lx_mod->lx_head_e32_exe->e32_nrestab );
 
-        io_log("Non-resident Names Table size: %d, 0x%x \n",
-                                lx_mod->lx_head_e32_exe->e32_cbnrestab,
-                                lx_mod->lx_head_e32_exe->e32_cbnrestab );
-        io_log("Non-resident Names Table offset: %d, 0x%x \n",
-                                lx_mod->lx_head_e32_exe->e32_nrestab,
-                                lx_mod->lx_head_e32_exe->e32_nrestab );
-        return 0;
+    return 0;
 }
 
 
-        /* Get the module name from the Resident Names Table. */
-char * get_module_name_res_name_tbl_entry(struct LX_module * lx_mod) {
+/* Get the module name from the Resident Names Table. */
+char *get_module_name_res_name_tbl_entry(struct LX_module *lx_mod)
+{
+    int offs_res_name_table = lx_mod->lx_head_e32_exe->e32_restab -
+        lx_mod->lx_head_e32_exe->e32_objtab;
+    ////int size_res_name_table = lx_mod->lx_head_e32_exe->e32_enttab -
+    ////                                                        lx_mod->lx_head_e32_exe->e32_restab;
 
-        int offs_res_name_table = lx_mod->lx_head_e32_exe->e32_restab -
-                                                                lx_mod->lx_head_e32_exe->e32_objtab;
-        ////int size_res_name_table = lx_mod->lx_head_e32_exe->e32_enttab -
-        ////                                                        lx_mod->lx_head_e32_exe->e32_restab;
+    ////int c_len = lx_mod->loader_section[offs_res_name_table];
+    char buf_name[255];
+    char *ptr_buf_name = (char *)&buf_name;
+    int entry_lenghts = 0;
+    ////int ordinal = 0;
 
-        ////int c_len = lx_mod->loader_section[offs_res_name_table];
-        char buf_name[255];
-        char *ptr_buf_name = (char *)&buf_name;
-        int entry_lenghts = 0;
-        ////int ordinal = 0;
-
-        /*while(entry_lenghts < (size_res_name_table-1)) { */
-                ////c_len = lx_mod->loader_section[offs_res_name_table + entry_lenghts];
-                copy_pas_str(ptr_buf_name,
-                                        (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts]);
+    /*while(entry_lenghts < (size_res_name_table-1)) { */
+            ////c_len = lx_mod->loader_section[offs_res_name_table + entry_lenghts];
+    copy_pas_str(ptr_buf_name,
+        (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts]);
 
 
-                ////ordinal = *((unsigned short int*)&lx_mod->loader_section[
-                ////                                        offs_res_name_table + c_len+1+entry_lenghts]);
+    ////ordinal = *((unsigned short int*)&lx_mod->loader_section[
+    ////                                        offs_res_name_table + c_len+1+entry_lenghts]);
 
-                /*if(strcmp(entry_name,ptr_buf_name)==0)
-                        return ordinal;*/
+    /* if (strcmp(entry_name,ptr_buf_name) == 0)
+        return ordinal; */
 
-                /*entry_lenghts += c_len+1+2;
-                io_log("entry_lenghts: %d \n", entry_lenghts); */
-        /*}*/
-        return (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts];
+    /*entry_lenghts += c_len + 1 + 2;
+        io_log("entry_lenghts: %d \n", entry_lenghts); */
+    /*}*/
+
+    return (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts];
 }
