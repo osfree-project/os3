@@ -30,22 +30,31 @@ BID_IGN_ROOT_CONF=y
 .DEFAULT_GOAL := all
 
 l4: mount
-	chroot $(LENNY) $(MAKE) -C $(BLD_DIR) O=$(BLD_DIR) BID_IGN_ROOT_CONF= $(MAKEFLAGS) all
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(BLD_DIR) O=$(BLD_DIR) BID_IGN_ROOT_CONF= $(MAKEFLAGS) all
 
 config-l4: mount
-	chroot $(LENNY) $(MAKE) -C $(L4DIR) O=$(BLD_DIR) $(MAKEFLAGS) config
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(L4DIR) O=$(BLD_DIR) $(MAKEFLAGS) config
 
 dice: mount
-	chroot $(LENNY) /bin/sh -c "cd $(ROOT)/dice && ./configure && $(MAKE)"
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) /bin/sh -c "cd $(ROOT)/dice && ./configure && $(MAKE)"
 
 fiasco: mount
-	chroot $(LENNY) $(MAKE) -C $(FIASCO_BLD_DIR) $(MAKEFLAGS) all
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(FIASCO_BLD_DIR) $(MAKEFLAGS) all
 
 config-fiasco: mount
-	chroot $(LENNY) $(MAKE) -C $(FIASCO_DIR) O=$(FIASCO_BLD_DIR) $(MAKEFLAGS) config
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(FIASCO_DIR) O=$(FIASCO_BLD_DIR) $(MAKEFLAGS) config
 
 os3: symlinks mount
-	chroot $(LENNY) $(MAKE) -C `pwd` $(MAKEFLAGS) all
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C `pwd` $(MAKEFLAGS) all
+
+clean-l4: mount
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(L4DIR) O=$(BLD_DIR) $(MAKEFLAGS) clean
+
+clean-dice: mount
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) /bin/sh -c "cd $(ROOT)/dice && $(MAKE) clean"
+
+clean-fiasco: mount
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) $(MAKE) -C $(FIASCO_BLD_DIR) $(MAKEFLAGS) clean
 
 run: symlinks mount
 ifeq ($(USE_OLD_QEMU),)
@@ -63,7 +72,7 @@ ifeq ($(USE_OLD_QEMU),)
 	| tee $(REP_DIR)/qemu.log
 else
 # old qemu from Debian 5 Lenny
-	chroot $(LENNY) qemu-system-i386 \
+	sudo /usr/sbin/chroot --userspec=$(UG) $(LENNY) qemu-system-i386 \
 		-no-kqemu \
 		$(GDB) \
 		-m $(MEM) \
@@ -81,11 +90,11 @@ endif
 mount: $(MOUNTFLAG)
 
 $(MOUNTFLAG):
-	cd $(LENNY) && $(OS3_DIR)/platform/l4env/tools/mountall.sh mount $(MAIN)
+	cd $(LENNY) && sudo $(OS3_DIR)/platform/l4env/tools/mountall.sh mount $(MAIN)
 	touch $@
 
 unmount: $(MOUNTFLAG)
-	cd $(LENNY) && $(OS3_DIR)/platform/l4env/tools/mountall.sh unmount $(MAIN) && rm -rf $<
+	cd $(LENNY) && sudo $(OS3_DIR)/platform/l4env/tools/mountall.sh unmount $(MAIN) && rm -rf $<
 
 symlinks: $(SYMLINKS)
 

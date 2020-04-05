@@ -2,7 +2,7 @@ This is an L4Env-specific sources and build system for osFree OS/2
 personality. To build it under L4Env, you should checkout L4Env sources
 first:
 
-# svn co http://svn.tudos.org/repos/tudos/trunk .
+# git clone https://github.com/osfree-project/l4env
 
 To compile the L4Env sources under newer Linuxes, you'll need to run toolchain
 from Debian 5 "Lenny". So, you'll need to install Debian 5 "Lenny" in chroot.
@@ -19,45 +19,21 @@ To revert sources to unpatched state, run
 
 Then create the L4Env build dir:
 
-# mkdir bld
-# cd l4
-# make O=../bld config
+# mkdir /home/src/l4/l4env/bld
 
-Customize your options in the started ncurses-based TUI. You may need to disable
-building the documentation, for example. Documentation requires texlive to build
-the PDF files from .tex source.
+Edit the build.cfg file in os3/platform/l4env dir. Change the path to top level dir, where 
+"osfree", "os3", "l4", "kernel", LENNY and "bld" dirs are.
 
-Then change to the build directory and run make:
+MAIN = /home/src/l4
 
-# cd bld
-# make
+-- This is where all sources are located.
 
-This will build everything, including the DICE IDL compiler, L4Env and
-L4/Fiasco microkernel.
+ROOT = $(MAIN)/l4env
 
-<todo: Describe required L4/Fiasco build options here>
-
-Then create a symlink to "os3/platform/l4env" directory in l4/pkg directory:
-
-# cd ..
-# cd l4/pkg
-# ln -s /mnt/os3/platform/l4env os3
-
-The symlink should be absolute, i.e., starting from the root directory. Change to 
-os3/platform/l4env:
-
-# cd ../../..
-# cd os3/platform/l4env
-
-Edit the build.cfg file. Change the path to top level dir, where "osfree", "os3", "l4",
-"kernel" and "bld" dirs are.
-
-ROOT=/mnt
-
-Then you need to adjust the paths to "os3", "l4", "bld" and "kernel/fiasco/build",
+Then you need to adjust the paths to "os3", "l4", "bld", LENNY and "kernel/fiasco/build",
 if required. Also, you can adjust the
 
-DISPLAY = -vnc 172.30.0.107:2
+DISPLAY = -display vnc=172.30.0.107:2
 
 setting to point to your QEMU VNC display (if appropriate). I am working on my OS/2 machine,
 and I am logging into my Linux machine via SSH, and run make via SSH. I connect to QEMU VNC
@@ -67,31 +43,60 @@ DISPLAY =
 
 and comment the
 
-DISPLAY = -vnc 172.30.0.107:2
+DISPLAY = -display vnc=172.30.0.107:2
 
-line out.
+line out. Checkout the OS/2 personality to /home/src/l4/l4env/os3 dir:
 
-Go to the build dir and run make again:
+# mkdir /home/src/l4/l4env/os3
+# cd /home/src/l4/l4env/os3
+# git clone https://github.com/osfree-project/os3 .
 
-# cd bld
-# make
+Go to the l4env platform-specific dir and do:
 
-This should build everything, including the osFree OS/2 personality. This also will create
-the "os3" build subdirectory under /mnt/bld/pkg. From now, you can change to the required
-directory in the os3/platform/l4env tree, and run make with path to the build directory 
-specified as a parameter:
+# cd /home/src/l4/l4env/os3/platform/l4env
+# make config-l4
+
+This will start an l4env config shell. You may leave everything as is, except for "Build 
+Documentation" checkbox (if you don't want to fiddle with TeX).
+
+Then do
+
+# make l4
+
+This should build everything, including DICE IDL compiler, L4env and L4/Fiasco.
+
+Then do
+
+# make config-fiasco
+
+and set up the correct Fiasco options. You should enable "Handle and preserve segments",
+"Enable I/O port protection" and "Enable CLI/STI (IOPL 3)" options under "Kernel options".
+Then do
+
+# make fiasco
+
+to build L4/Fiasco with correct options. Then do
+
+# make os3
+
+to build OS/2 personality. And then you can test it by doing
+
+# make run
+
+Also, from now, you can change to the required directory in the os3/platform/l4env tree, 
+and run make with path to the build directory specified as a parameter:
 
 # cd ..
 # cd os3
 # cd platform/l4env
 # cd server/os2srv
-# make O=/mnt/bld
+# make os3
 
 This will build os2srv only.
 
 Then you can test the built binaries in QEMU with the following command:
 
-# make O=/mnt/bld run
+# make run
 
 Connect to 172.30.0.107:2 VNC server with your VNC viewer, to see your QEMU screen (if you
 enabled VNC).
@@ -99,7 +104,7 @@ enabled VNC).
 This should start QEMU with GRUB, loading everything needed via PXE/TFTP using QEMU built-in
 tftp server. There is a number of menu items available: 1) L4Env Hello world 2) os2fs server
 test and the main one, 3) Interactive OS/2 personality setup, which can be used to run different
-test binaries interactively. 
+test binaries interactively.
 
 The interactive scenario runs an interactive minishell, which is a standard OS/2 LX binary
 which can start different OS/2 binaries as child processes. Note that at the moment, only 32-bit 
@@ -125,6 +130,10 @@ the help screen, or a license, by specifying "-h" or "-L" switches. Note that yo
 some file. All it will do at the moment is just fail with an error message about "file not found".
 Note also that at the moment, the write access to the file system is missing, so it can't really
 archive anything.
+
+Except for OpenWatcom binaries, now it's possible to run some VirtualPascal-built binaries. As
+an example of those, you can run vp.exe, which is a VirtualPascal "Hello World". VirtualPascal
+requires some more working API's, than OpenWactom, like some semaphore and shared memory API's.
 
 Also, semi-working are Watcom assembler, wasm.exe, and OpenWatcom make, wmake.exe. You can try
 starting wmake.exe without parameters, and it will complain that there is no makefile specified.
@@ -165,7 +174,7 @@ Setting up the Debian 5 "Lenny" chroot.
 
 Debian "Lenny" is available as a ready to use archive:
 
-# cd /mnt/os2l/src/l4/l4env
+# cd /home/src/l4/l4env
 
 Here is the directory where all "osfree", "os3", "l4", "kernel", "bld" subdirectories
 are located.
@@ -173,9 +182,11 @@ are located.
 # wget ftp://osfree.org/upload/debian5-i386-chrooted-bldenv.tgz
 # tar xvzf debian5-i386-chrooted-bldenv.tgz
 # cd debian-lenny-32
+# sudo chown -R valerius.valerius .
 
-Then create bindings for dirs in a chrooted filesystem to corresponding dirs in a root
-filesystem:
+This will unpack the archive and change the owner of files. Where valerius.valerius are
+your usual user and group. Then create bindings for dirs in a chrooted filesystem to 
+corresponding dirs in a root filesystem:
 
 # mount -o bind /dev/ ./dev/
 # mount -o bind /dev/shm/ ./dev/shm/
@@ -183,10 +194,8 @@ filesystem:
 # mount -o bind /proc/ ./proc/
 # mount -o bind /sys/ ./sys/
 # mount -o bind /tmp/ ./tmp/
-# mount -o bind /mnt/os2l/src/l4/l4env/ ./mnt/
-
-Where /mnt/os2l/src/l4/l4env is the path to your top-level sources directory (containing
-the "bld", "l4", "kernel", "osfree" and "os3" subdirs).
+# mount -o bind /mnt/ ./mnt/
+# mount -o bind /home/ ./home/
 
 Then change into chroot via a command:
 
@@ -199,12 +208,7 @@ You can optionally start "mc" for your convenience:
 You will see the chrooted environment as your root directory. Then you can change to your sources
 directory:
 
-# cd /mnt
-
-You will see contents of your /mnt/os2l/src/l4/l4env source directory in /mnt. Here. you can run
-your L4Env build system.
-
-# cd bld
+# cd /home/src/l4/l4env/bld
 # make
 
 -- to build everything. Or
@@ -212,11 +216,11 @@ your L4Env build system.
 # cd os3
 # cd platform/l4env
 # cd src/server/os2srv
-# make O=/mnt/bld
+# make os3
 
 then os2srv sources will be built. Or
 
-# make O=/mnt/bld run
+# make run
 
 will run your OS/2 personality binaries in QEMU.
 
