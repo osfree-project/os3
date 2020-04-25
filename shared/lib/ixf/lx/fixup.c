@@ -167,7 +167,7 @@ void print_struct_r32_rlc_info(struct r32_rlc *rlc)
         io_log(" get_mod_ord1_size: %d\n", get_mod_ord1_size(rlc));
 
     if ((rlc->nr_flags & NRRTYP) == NRRINT)  /* Internal reference */
-        io_log(" get_trgoff_size:   %d\n", get_trgoff_size(rlc));
+        io_log(" get_trg_off_size:   %d\n", get_trg_off_size(rlc));
     if ((rlc->nr_flags & NRRORD) == NRRORD)
         io_log(" get_imp_ord1_size: %d\n", get_imp_ord1_size(rlc));
 
@@ -188,19 +188,19 @@ int get_SRC_FLAGS_size()
 /* SRC  FLAGS  SRCOFF/CNT1 ... */
 int get_srcoff_cnt1_size(struct r32_rlc *rlc)
 {
-    if ((rlc->nr_stype & NRCHAIN)!= NRCHAIN) //0x20. Om den inte är satt så är det en DW annars DB.
-        /* 2 bytes size */
-        return 2;
+    if (rlc->nr_stype & NRCHAIN) //0x20. Om den inte är satt så är det en DW annars DB.
+        /* 1 bytes size */
+        return 1;
 
-    /* 1 byte size */
-    return 1;
+    /* 2 byte size */
+    return 2;
 }
 
 /* Gets the size of field mod_ord1 (module ordinal), variable size. */
 /* SRC  FLAGS  SRCOFF/CNT1  MOD_ORD#1 ... */
 int get_mod_ord1_size(struct r32_rlc *rlc)
 {
-    if ((rlc->nr_flags &NR16OBJMOD) == NR16OBJMOD) //0x40. Om den är satt så är det en DW annars DB.
+    if (rlc->nr_flags & NR16OBJMOD) //0x40. Om den är satt så är det en DW annars DB.
         /* 2 bytes size*/
         return 2;
 
@@ -213,18 +213,28 @@ int get_mod_ord1_size(struct r32_rlc *rlc)
 int get_imp_ord1_size(struct r32_rlc *rlc)
 {
     /* en byte */
-    if ((rlc->nr_flags & NR8BITORD) == NR8BITORD)
+    if (rlc->nr_flags & NR8BITORD)
         return 1;
 
-    /* en word */
-    if ((rlc->nr_flags & NR32BITOFF) != NR32BITOFF)
+    /* en dubbelword */
+    if (rlc->nr_flags & NR32BITOFF)
+        return 4;
+    else
         return 2;
+}
+
+/* Gets the size of field trgoff (target offset), variable size. */
+/* SRC  FLAGS  SRCOFF/CNT1  OBJECT1  TRGOFF1,2 ... */
+int get_trg_off_size(struct r32_rlc *rlc)
+{
+    if ((rlc->nr_stype & NRSRCMASK) == 0x02) // Selector fixup
+        return 0;
 
     /* en dubbelword */
-    if ((rlc->nr_flags & NR32BITOFF) == NR32BITOFF)
+    if (rlc->nr_flags & NR32BITOFF)
         return 4;
-
-    return 0;
+    else
+        return 2;
 }
 
 /* Gets the size of field additive, variable size. */
@@ -237,22 +247,6 @@ int get_additive_size(struct r32_rlc *rlc)
     if ((rlc->nr_flags & NRADD) == NRADD)
     {
         if ((rlc->nr_flags & NRCHAIN) == NRCHAIN) /* 32 bitars additive fixup. */
-            return 4;
-        else
-            return 2; /* 16 bit */
-    }
-
-    /* Not avalable. */
-    return 0;
-}
-
-/* Gets the size of field trgoff (target offset), variable size. */
-/* SRC  FLAGS  SRCOFF/CNT1  OBJECT1  TRGOFF1,2 ... */
-int get_trgoff_size(struct r32_rlc *rlc)
-{
-    if ((rlc->nr_flags & NRSSEG) != NRSSEG)
-    {
-        if ((rlc->nr_flags & NR32BITOFF) == NR32BITOFF) /* 32 bitars target fixup. */
             return 4;
         else
             return 2; /* 16 bit */
@@ -289,6 +283,7 @@ int get_ord1_entry_size(struct r32_rlc *rlc)
     //return 0;     /* Not avalable. */
     return 2;
 }
+
 
 /*
                               Fixup Record Table
@@ -531,7 +526,6 @@ unsigned int get_imp_name_rlc(struct r32_rlc *rlc)
     return imp_name_val;
 }
 
-
 /* Gets the total size of an fixup record. */
 int get_reloc_size_rlc(struct r32_rlc *rlc)
 {
@@ -550,7 +544,7 @@ int get_reloc_size_rlc(struct r32_rlc *rlc)
     if ((rlc->nr_flags & NRRTYP) == NRRINT)
     {   /* 1 */
         reloc_size += get_SRC_FLAGS_size() + get_srcoff_cnt1_size(rlc) +
-            get_mod_ord1_size(rlc) + get_imp_ord1_size(rlc);
+            get_mod_ord1_size(rlc) + get_trg_off_size(rlc);
 
         return reloc_size;
     }

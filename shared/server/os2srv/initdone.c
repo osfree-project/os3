@@ -36,6 +36,7 @@
 
 /* osFree internal */
 #include <os3/cfgparser.h>
+#include <os3/handlemgr.h>
 #include <os3/processmgr.h>
 #include <os3/io.h>
 #include <os3/thread.h>
@@ -43,6 +44,11 @@
 int sysinit (cfg_opts *options);
 
 l4_os3_thread_t sysinit_id;
+
+#define MAX_SEM 1024
+
+/* Semaphore handle table pointer */
+extern HANDLE_TABLE htSem;
 
 extern cfg_opts options;
 
@@ -118,6 +124,15 @@ int init(struct options *opts)
   // Remove CONFIG.SYS from memory
   io_close_file(addr);
 
+  /* Init semaphore handle table */
+  rc = HndInitializeHandleTable(MAX_SEM, sizeof(htSem), &htSem);
+
+  if (rc)
+  {
+    io_log("Failed to init semaphores handle table, exiting!\n");
+    return rc;
+  }
+
   /* init process manager */
   PrcInit();
 
@@ -131,4 +146,6 @@ void done()
 {
   /* destruct process manager */
   PrcDone();
+  /* destroy JFT */
+  HndDestroyHandleTable(&htSem);
 }

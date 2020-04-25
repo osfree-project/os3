@@ -34,7 +34,7 @@ extern l4_os3_thread_t sysinit_id;
 extern struct t_os2process *proc_root;
 
 /* Semaphore handle table pointer */
-HANDLE_TABLE *htSem;
+HANDLE_TABLE htSem;
 
 void CPTest(void)
 {
@@ -667,7 +667,7 @@ APIRET CPCreateEventSem(l4_os3_thread_t thread,
   }
 
   /* allocate a hev for a new event semaphore */
-  if ( (rc = HndAllocateHandle(htSem, &hev, (HANDLE **)&sem)) )
+  if ( (rc = HndAllocateHandle(&htSem, &hev, (HANDLE **)&sem)) )
     return rc;
 
   if (!pszName || !*pszName)
@@ -701,13 +701,13 @@ APIRET CPOpenEventSem(l4_os3_thread_t thread,
   //APIRET rc;
   SEM    *sem;
 
-  if (phev && (pszName || *pszName))
+  if (phev && (! pszName || ! *pszName))
     return ERROR_INVALID_PARAMETER;
 
   if (*phev)
   {
     // open by handle
-    if (! HndIsValidIndexHandle(htSem, *phev, (HANDLE **)&sem))
+    if (! HndIsValidIndexHandle(&htSem, *phev, (HANDLE **)&sem))
     {
       if (sem->cType == SEMTYPE_EVENT && sem->cShared)
       {
@@ -729,7 +729,7 @@ APIRET CPOpenEventSem(l4_os3_thread_t thread,
     if (strstr(pszName, "\\SEM32\\") != pszName)
       return ERROR_INVALID_NAME;
 
-    for (sem = (SEM *)(htSem->pFirstHandle); sem; sem = sem->pNext)
+    for (sem = (SEM *)(htSem.pFirstHandle); sem; sem = sem->pNext)
     {
       if (sem->szName && !strcmp(sem->szName, pszName))
         break;
@@ -743,7 +743,7 @@ APIRET CPOpenEventSem(l4_os3_thread_t thread,
       // increment refcount
       sem->ulRefCnt++;
 
-      *phev = (ULONG)(((PCHAR)sem - (PCHAR)htSem->pFirstHandle) / htSem->ulHandleSize);
+      *phev = (ULONG)(((PCHAR)sem - (PCHAR)htSem.pFirstHandle) / htSem.ulHandleSize);
       return NO_ERROR;
     }
     else

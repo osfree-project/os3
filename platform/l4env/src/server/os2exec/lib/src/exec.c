@@ -100,6 +100,9 @@ APIRET ExcClientGetSect(HMODULE hmod,
     long ret;
 
     ret = os2exec_getsect_call(&execsrv, hmod, index, sect, &env);
+    io_log("$$$3 sect->type=%x\n", sect->type);
+    io_log("$$$3 sect->id=%x\n", sect->id);
+    io_log("$$$3 sect->flags=%x\n", sect->flags);
     return (APIRET)ret;
 }
 

@@ -80,7 +80,11 @@ os2exec_getsect_component (CORBA_Object _dice_corba_obj,
                            l4_os3_section_t *sect /* out */,
                            CORBA_Server_Environment *_dice_corba_env)
 {
-  return ExcGetSect(hmod, index, sect);
+  long rc = ExcGetSect(hmod, index, sect);
+  io_log("$$$2 sect->type=%x\n", sect->type);
+  io_log("$$$2 sect->id=%x\n", sect->id);
+  io_log("$$$2 sect->flags=%x\n", sect->flags);
+  return rc;
 }
 
 

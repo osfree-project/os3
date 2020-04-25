@@ -24,12 +24,6 @@
 #include <os3/cfgparser.h>
 #include <os3/modmgr.h>
 
-/* libc includes */
-#include <stdio.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <string.h>
-
 int LXLoadHeader(struct LX_module *lx_mod);
 int LXLoadLoaderSection(struct LX_module *lx_mod);
 int LXLoadFixupSection(struct LX_module *lx_mod);
@@ -130,6 +124,7 @@ size_t lx_fread_disk_file(void *ptr, size_t size, size_t nmemb,
     return fread(ptr, size, nmemb, lx_mod->fh);
 }
 
+#if 0
 
 /*
     Reads the lx file from filehandle fh into structure lx_mod.
@@ -169,6 +164,7 @@ load_lx(FILE *fh, struct LX_module *lx_mod)
     return lx_mod;
 }
 
+#endif
 
 /*
 #include <sys/mman.h>
@@ -377,7 +373,7 @@ char *get_imp_mod_name(struct LX_module *lx_mod, int mod_idx)
 
     mod_name = &lx_mod->fixup_section[offs_mod_table];
 
-    io_log("mod_idx=%u, mod_name=", mod_idx);
+    /* io_log("mod_idx=%u, mod_name=", mod_idx);
 
     for (p = mod_name; *p; p++)
     {
@@ -387,7 +383,7 @@ char *get_imp_mod_name(struct LX_module *lx_mod, int mod_idx)
             io_log("%c", *p);
     }
 
-    io_log("\n");
+    io_log("\n"); */
 
     for (i = 0;
          i != (mod_idx-1);
@@ -458,6 +454,7 @@ char *copy_pas_str(char *dest, char *src)
     return dest;
 }
 
+#if 0
 
 /* struct e32_exe {
    unsigned long       e32_objtab;     // Object table offset
@@ -776,6 +773,7 @@ void *get_entry(struct LX_module *lx_mod, unsigned long entry_ord_to_search,
     return (void *)entry_table;
 }
 
+
 /* Return the module flags. 0x8000 == library module*/
 unsigned long int get_mflags(struct LX_module *lx_mod)
 {
@@ -899,3 +897,5 @@ char *get_module_name_res_name_tbl_entry(struct LX_module *lx_mod)
 
     return (char *)&lx_mod->loader_section[offs_res_name_table + entry_lenghts];
 }
+
+#endif

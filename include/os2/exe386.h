@@ -164,7 +164,7 @@
 #define OBJBIGDEF   0x2000L
 #define OBJIOPL     0x8000L
 
-#if FOR_EXEHDR
+//#if FOR_EXEHDR
 
 #define OBJDISCARD  0x0010L
 #define OBJSHARED   0x0020L
@@ -172,7 +172,7 @@
 #define OBJEXEC     0x0004L
 #define OBJCONFORM  0x4000L
 
-#else
+//#else
 
 #define NSDISCARD   0x0010L
 #define NSMOVE      NSDISCARD
@@ -181,7 +181,7 @@
 #define NSEXRD      0x0004L
 #define NSCONFORM   0x4000L
 
-#endif
+//#endif
 
 #define GETPAGEIDX(x)   ((x).o32_pagedataoffset)
 #define PUTPAGEIDX(x,i) ((x).o32_pagedataoffset = ((unsigned long)(i)))
@@ -189,12 +189,13 @@
 #define GETPAGESIZ(x)   ((x).o32_pagesize)
 #define PAGEFLAGS(x)    (x).o32_pageflags
 
-#define VALID       0x0000
-#define ITERDATA    0x0001
+#define VALID       0x0000 // Unpacked
+#define ITERDATA    0x0001 // EXEPACK:1
 #define INVALID     0x0002
 #define ZEROED      0x0003
 #define RANGE       0x0004
-#define ITERDATA2   0x0005
+#define ITERDATA2   0x0005 // EXEPACK:2
+#define ITERDATA3   0x0008 // OS/4
 
 #define B32_CNT(x)      (x).b32_cnt
 #define B32_TYPE(x)     (x).b32_type

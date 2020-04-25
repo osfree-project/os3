@@ -48,6 +48,8 @@ extern unsigned long long shared_memory_area;
 int getrec(char *mname, struct module_rec **p);
 int getrec2(unsigned long hmod, struct module_rec **p);
 
+unsigned long flat2sel(unsigned long addr);
+
 struct module_rec module_root; /* Root for module list.*/
 
 extern PVOID entry_Table[];
@@ -67,6 +69,28 @@ slist_t *next_slist (slist_t *s);
 void getline (char **from, char *to);
 int dl_get_funcs (int *numentries, IXFMODULEENTRY **entries);
 int lcase(char* dest, const char* src);
+
+/* converts FLAT address to 16:16 address */
+unsigned long flat2sel(unsigned long addr)
+{
+  unsigned short sel;
+  unsigned short offs;
+
+  if (! addr)
+  {
+    addr = 0;
+    goto flat2sel_exit;
+  }
+
+  sel = addr >> 16;
+  sel = (sel << 3) | 7;
+  offs = addr & 0xffff;
+
+  addr = (sel << 16) | offs;
+
+flat2sel_exit:
+  return addr;
+}
 
 int strnicmp(const char *s, const char *t, int n)
 {
@@ -539,6 +563,8 @@ unsigned long LoadModule(char            *pszName,
   char exeflag;
   struct module_rec *prev;
 
+  //io_log("### 000 ixfModule->Entries=%x\n", ixfModule->Entries);
+
   pszModname  = ixfModule->name;
   exeflag    = ixfModule->exec;
   char *mname = get_fname(pszModname);
@@ -549,10 +575,10 @@ unsigned long LoadModule(char            *pszName,
   if (! stricmp(mname, "SUB32"))
   {
     t = getrec((char *)"EMXWRAP", &prev);
-    io_log("*** SUB32, t=%lx\n", t);
+    //io_log("*** SUB32, t=%lx\n", t);
   }
 
-  io_log("mname=%s\n", mname);
+  //io_log("mname=%s\n", mname);
 
   if (! t)
   {
@@ -561,7 +587,8 @@ unsigned long LoadModule(char            *pszName,
 
     if (! exeflag)
     {
-      io_log("already loaded, dll\n");
+      //io_log("already loaded, dll\n");
+      //io_log("### 001 ixfModule->Entries=%x\n", ixfModule->Entries);
       *phmod = (unsigned long)prev->module_struct;
       return 0;
     }
@@ -571,31 +598,40 @@ unsigned long LoadModule(char            *pszName,
       while (prev->up)
         prev = (struct module_rec *)prev->up;
 
-      io_log("already loaded, exe\n");
+      //io_log("already loaded, exe\n");
       *phmod = (unsigned long)prev->module_struct;
       prev->load_status = DONE_LOADING;
+      //io_log("### 002 ixfModule->Entries=%x\n", ixfModule->Entries);
       return 0;
     }
   }
- 
+
+  //io_log("### 002a ixfModule->Entries=%x\n", ixfModule->Entries);
+
   if ((t == 1) || (! t && prev->load_status != DONE_LOADING))
   {
     // not loaded
     // Load module
     rc = IXFLoadModule(addr, size, ixfModule);
+    //io_log("### 002b\n");
     if (rc)
     {
+      //io_log("### 002c\n");
       if (cbName <= strlen(pszModname))
       {
+        //io_log("### 002d\n");
         IXFFreeModule(ixfModule);
         return ERROR_BUFFER_OVERFLOW;
       }
       strcpy(pszName, pszModname);
       *phmod = 0;
+      //io_log("### 002e\n");
       IXFFreeModule(ixfModule);
       return rc;
     }
   }
+
+  //io_log("### 003 ixfModule->Entries=%x\n", ixfModule->Entries);
 
   // Display module entry table
   if (options.debugixfmgr)
@@ -619,8 +655,8 @@ unsigned long LoadModule(char            *pszName,
 
   if (! stricmp(mname, "SUB32"))
     mname = (char *)"EMXWRAP";
-  io_log("mname=%s\n", mname);
-  io_log("exeflag=%d\n", exeflag);
+  //io_log("mname=%s\n", mname);
+  //io_log("exeflag=%d\n", exeflag);
   // Register in module list
   // @todo extract filename only because can be fullname with path
   new_module_el = ModRegister(mname, ixfModule, exeflag);
@@ -644,7 +680,7 @@ unsigned long LoadModule(char            *pszName,
     if (! stricmp(mname, "SUB32"))
     {
       t = getrec((char *)"EMXWRAP", &prev);
-      io_log("*** SUB32, t=%lx\n", t);
+      //io_log("*** SUB32, t=%lx\n", t);
     }
 
     /* if module is not loaded, then load it */
@@ -734,6 +770,7 @@ unsigned long LoadModule(char            *pszName,
     }
   }
 
+  //io_log("### 004 ixfModule->Entries=%x\n", ixfModule->Entries);
   ModLinkModule(ixfModule, phmod);
   //@todo use handle table
   *phmod=(unsigned long)ixfModule;
@@ -918,19 +955,19 @@ unsigned long ModInitialize(void)
   region = l4rm_get_region_list();
   for (i = 0, r = 0; region; i++, region = region->next)
   {
-    io_log("addr=%x\n",  region->start);
-    io_log("end=%x\n",   region->end);
-    io_log("flags=%x\n", region->flags);
+    //io_log("addr=%x\n",  region->start);
+    //io_log("end=%x\n",   region->end);
+    //io_log("flags=%x\n", region->flags);
 
     if (!(region->flags & REGION_DATASPACE))
       continue;
 
-    io_log("ds=%x\n",   region->data.ds.ds.id);
+    //io_log("ds=%x\n",   region->data.ds.ds.id);
 
     if ((void *)region->start <= dl_init &&
         dl_init <= (void *)region->end)
     {
-      io_log("is code section\n");
+      //io_log("is code section\n");
       s = r;
       r = next_slist(r);
       if (!s) sysdep->seclist = r;
@@ -945,7 +982,7 @@ unsigned long ModInitialize(void)
       if ((void *)region->start <= execsym &&
           execsym <= (void *)region->end)
     {
-      io_log("is data section\n");
+      //io_log("is data section\n");
       s = r;
       r = next_slist(r);
       if (!s) sysdep->seclist = r;
@@ -1063,12 +1100,22 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
     prev = (struct module_rec *) prev->next;
   }
 
+  if (! ixfModule)
+  {
+      io_log("module not found\n");
+      return ERROR_INVALID_HANDLE;
+  }
+
   if (ordinal > 0)
   { // Search by ordinal
+    int i;
+    //io_log("ixfModule=%x\n", ixfModule);
+    //io_log("ordinal=%u\n", ordinal);
+    //io_log("ixfModule->Entries=%x\n", ixfModule->Entries);
     if (ixfModule->Entries[ordinal-1].ModuleName!=NULL)
     { // This is forward to another module. Call ourself...
       // First search in the module list
-      io_log("ModuleName=%x\n", ixfModule->Entries[ordinal].ModuleName);
+      //io_log("ModuleName=%x\n", ixfModule->Entries[ordinal].ModuleName);
       prev = (struct module_rec *) module_root.next;
       while(prev)
       {
@@ -1079,7 +1126,7 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
             searched_hmod=0;
             return 5/*ERROR_ACCESS_DENIED*/; // @todo Need more accurate code
           }
-          io_log("module: %d\n", prev->mod_name);
+          //io_log("module: %d\n", prev->mod_name);
           // @todo use handles here
           searched_hmod=(unsigned long)prev->module_struct;
           break;
@@ -1094,7 +1141,7 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
     }
 
     *ppfn=ixfModule->Entries[ordinal-1].Address;
-    io_log("ModQueryProcAddr(%u, %u, %s, %p)\n", hmod, ordinal, pszName, *ppfn);
+    //io_log("ModQueryProcAddr(%u, %u, %s, %p)\n", hmod, ordinal, pszName, *ppfn);
     return 0;
   }
 
@@ -1135,7 +1182,7 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
       }
 
       *ppfn=ixfModule->Entries[entries_counter-1].Address;
-      io_log("ModQueryProcAddr(%u, %u, %s, %p)\n", hmod, ordinal, pszName, *ppfn);
+      //io_log("ModQueryProcAddr(%u, %u, %s, %p)\n", hmod, ordinal, pszName, *ppfn);
       return 0;
     }
   }
@@ -1146,7 +1193,9 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
 void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
 {
   unsigned int imports_counter;
+  unsigned long src_off;
   int relative_jmp;
+  unsigned long absolute_jmp;
   //char name[256];
   struct module_rec *prev;
 
@@ -1157,8 +1206,8 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
        imports_counter<ixfModule->cbFixups;
        imports_counter++)
   {
-    io_log("Import entry %d of %d\n",imports_counter + 1, ixfModule->cbFixups);
-    io_log("Module=%s\n", ixfModule->Fixups[imports_counter].ImportEntry.ModuleName);
+    //io_log("Import entry %d of %d\n",imports_counter + 1, ixfModule->cbFixups);
+    //io_log("Module=%s\n", ixfModule->Fixups[imports_counter].ImportEntry.ModuleName);
 
     prev = (struct module_rec *) module_root.next;
     while(prev)
@@ -1181,7 +1230,7 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
     }
     // @todo use handles here
     *phmod=(unsigned long)prev->module_struct;
-    io_log("%s.%d\n", ixfModule->Fixups[imports_counter].ImportEntry.FunctionName, ixfModule->Fixups[imports_counter].ImportEntry.Ordinal);
+    //io_log("%s.%d\n", ixfModule->Fixups[imports_counter].ImportEntry.FunctionName, ixfModule->Fixups[imports_counter].ImportEntry.Ordinal);
     ModQueryProcAddr(*phmod,
                      ixfModule->Fixups[imports_counter].ImportEntry.Ordinal,
                      ixfModule->Fixups[imports_counter].ImportEntry.FunctionName,
@@ -1192,15 +1241,91 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
       io_log("src=%x, dst=%x\n",(ixfModule->Fixups[imports_counter].SrcAddress) , (ixfModule->Fixups[imports_counter].ImportEntry.Address));
     }
 
-    /* Is the EXE module placed under the DLL module in memory? */
-    //if((ixfModule->Fixups[imports_counter].SrcAddress) < (ixfModule->Fixups[imports_counter].ImportEntry.Address))
-      relative_jmp = (unsigned long)(ixfModule->Fixups[imports_counter].ImportEntry.Address) - (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress)-4;
-    //else
-    //  relative_jmp = 0xffffffff-((unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress) - (unsigned long)(ixfModule->Fixups[imports_counter].ImportEntry.Address))-3;
+    relative_jmp = (ixfModule->Fixups[imports_counter].ImportEntry.Address) - (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress) - 4;
+    absolute_jmp = ixfModule->Fixups[imports_counter].ImportEntry.Address;
+    src_off = ixfModule->Fixups[imports_counter].SrcVmAddress;
 
-    io_log("jmp=%x=%x\n", (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress), relative_jmp);
-    io_log("SrcVmAddress=%x\n", (unsigned long)ixfModule->Fixups[imports_counter].SrcVmAddress);
-    *((unsigned long *) ixfModule->Fixups[imports_counter].SrcVmAddress) = relative_jmp;
+    switch (ixfModule->Fixups[imports_counter].flags)
+    {
+      case 0x02: // 16-bit selector fixup
+        {
+          unsigned short *src;
+          unsigned short ptr;
+
+          ptr = flat2sel(absolute_jmp) >> 16;
+          src = (unsigned short *)src_off;
+
+          *(src) = ptr;
+        }
+        break;
+
+      case 0x03: // 16:16 pointer fixup
+        {
+          unsigned long *src;
+          unsigned long ptr;
+
+          ptr = flat2sel(absolute_jmp);
+          src = (unsigned long *)src_off;
+
+          *(src) = ptr;
+        }
+        break;
+
+      case 0x05: // 16-bit offset fixup
+        {
+          unsigned short *src;
+          unsigned long ptr;
+
+          ptr = flat2sel(absolute_jmp) & 0xffff;
+          src = (unsigned short *)src_off;
+
+          *(src) = ptr;
+        }
+        break;
+
+      case 0x06: // 16:32 pointer fixup
+        {
+          unsigned short *src;
+          unsigned long ptr;
+
+          ptr = flat2sel(absolute_jmp);
+          src = (unsigned short *)src_off;
+
+          *(src++) = ptr >> 16;
+          *((unsigned long *)src) = absolute_jmp;
+        }
+        break;
+
+      case 0x07: // 32-bit fixup
+        {
+          unsigned long *src;
+          unsigned long ptr;
+
+          ptr = absolute_jmp;
+          src = (unsigned long *)src_off;
+
+          *(src) = ptr;
+        }
+        break;
+
+      case 0x08: // 32-bit self-relative fixup
+        {
+          unsigned long *src;
+          unsigned long ptr;
+
+          ptr = relative_jmp;
+          src = (unsigned long *)src_off;
+
+          *(src) += ptr;
+        }
+        break;
+
+      default:
+        io_log("Unsupported fixup: src=%u\n", ixfModule->Fixups[imports_counter].flags);
+    }
+
+    //io_log("jmp=%x=%x\n", (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress), relative_jmp);
+    //io_log("SrcVmAddress=%x\n", src_off);
   }
 }
 

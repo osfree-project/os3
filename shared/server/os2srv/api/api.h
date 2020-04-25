@@ -21,7 +21,7 @@
 
 #define SEMTYPE_EVENT    0
 #define SEMTYPE_MUTEX    1
-#define SEMTYPR_MUXWAIT  2
+#define SEMTYPE_MUXWAIT  2
 
 /* Handle table element           */
 typedef struct _SEM
@@ -30,7 +30,7 @@ typedef struct _SEM
   char        szName[CCHMAXPATH];
   char        cShared;
   char        cType;
-  ULONG       ulRefCnt; 
+  ULONG       ulRefCnt;
   union
   {
     l4_os3_semaphore_t evt;

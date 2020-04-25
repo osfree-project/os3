@@ -794,7 +794,7 @@ APIRET FSFindFirst(PSZ pszFileSpec,
                     info->oNextEntryOffset = sizeof(FILEFINDBUF3);
 
                 fname = hdir->g.gl_pathv[i];
-                io_log("fname=%s\n", fname);
+                //io_log("fname=%s\n", fname);
 
                 if (strlen(fname) > 255)
                     return ERROR_META_EXPANSION_TOO_LONG;

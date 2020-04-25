@@ -25,9 +25,10 @@ typedef struct
   void               *addr;
   unsigned long      size;
   l4_os3_dataspace_t ds;
-  unsigned long     type;
-  unsigned long     id;
-  unsigned long     pad;
+  unsigned long      type;
+  unsigned long      id;
+  unsigned long      flags;
+  unsigned long      pad; // last 32-bit structure member won't be copied!
 } l4_os3_section_t;
 
 struct slist

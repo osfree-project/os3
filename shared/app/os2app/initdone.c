@@ -20,8 +20,8 @@ ULONG   private_memory_size = 64*1024*1024;
 ULONGLONG private_memory_area;
 
 /* shared memory arena settings */
-ULONG   shared_memory_base = 0x60000000;
-ULONG   shared_memory_size = 1024*1024*1024;
+ULONG   shared_memory_base = 0x10000000;
+ULONG   shared_memory_size = 256*1024*1024;
 ULONGLONG shared_memory_area;
 
 /* previous stack (when switching between 

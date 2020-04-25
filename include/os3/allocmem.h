@@ -9,7 +9,7 @@
 #include <os3/dataspace.h>
 
 void *allocmem(unsigned long long area, int base, int size, int flags,
-               unsigned long PIC, l4_os3_dataspace_t *ds);
+               unsigned long PIC, l4_os3_dataspace_t *ds, int align);
 
 int translate_os2_flags(int flags);
 

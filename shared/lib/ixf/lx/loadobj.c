@@ -34,11 +34,17 @@
 #include <os3/ixfmgr.h>
 #include <os3/native_dynlink.h>
 
-/* libc defs */
-#include <sys/mman.h>
-#include <string.h>
+/* libc includes */
+#include <stdlib.h>
 
 //extern struct t_mem_area os2server_root_mem_area;
+
+void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc, unsigned long int vm_start_of_page);
+void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc, unsigned long int vm_start_of_page);
+int unpack_page(unsigned char *dst, unsigned char *src, struct o32_map *map);
+void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target);
+unsigned long flat2sel(unsigned long addr);
+slist_t *lastelem (slist_t *e);
 
 slist_t *lastelem (slist_t *e)
 {
@@ -138,6 +144,7 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj *lx_obj)
     l4_os3_section_t *section;
     slist_t          *s;
     void             *mmap_obj = 0;
+    int              align = 0;
 #if 0 /*!defined(__OS2__) && !defined(__LINUX__) */
     mmap_obj = mmap((void *)(unsigned long)lx_obj->o32_base, lx_obj->o32_size,
                      PROT_WRITE | PROT_READ | PROT_EXEC  ,       /* | PROT_EXEC */
@@ -152,18 +159,23 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj *lx_obj)
         #ifndef __OS2__
             #include <os3/allocmem.h>
 
+            if (lx_obj->o32_flags & OBJALIAS16)
+            {
+                align = 16; // align 16-bit segments to 64k boundary
+            }
+
             // object map address in execsrv address space
             io_log("ixfModule->area=%llx, base=%lx, size=%lx\n", ixfModule->area, lx_obj->o32_base, lx_obj->o32_size);
             mmap_obj = allocmem(ixfModule->area, lx_obj->o32_base, lx_obj->o32_size,
-                            PAG_COMMIT|PAG_EXECUTE|PAG_READ|PAG_WRITE, ixfModule->PIC, &ds);
+                            PAG_COMMIT|PAG_EXECUTE|PAG_READ|PAG_WRITE, ixfModule->PIC, &ds, align);
             io_log("mmap_obj=%lx\n", mmap_obj);
             // Host-dependent part of IXFMODULE structure (data for L4 host)
-            ixfSysDep = (IXFSYSDEP *)(ixfModule->hdlSysDep);
+            ixfSysDep = (IXFSYSDEP *)(unsigned long)(ixfModule->hdlSysDep);
 
             if (lx_obj == stack_obj)
             {
-                ixfSysDep->stack_high = (void *)(lx_obj->o32_base + get_esp(lx_exe_mod));
-                ixfSysDep->stack_low  = (void *)((unsigned long long)ixfSysDep->stack_high + lx_exe_mod->lx_head_e32_exe->e32_stacksize);
+                ixfSysDep->stack_low = (void *)(lx_obj->o32_base + get_esp(lx_exe_mod));
+                ixfSysDep->stack_high  = (void *)((unsigned long)ixfSysDep->stack_low - lx_exe_mod->lx_head_e32_exe->e32_stacksize);
                 ixfModule->Stack = ixfSysDep->stack_high;
 
                 io_log("@@@: stack_low: %x\n", ixfSysDep->stack_low);
@@ -201,12 +213,19 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj *lx_obj)
             else                 // for DLL files
                 section->addr = (void *)mmap_obj;
 
+            section->flags = lx_obj->o32_flags;
+            io_log("### section->flags=%x\n", section->flags);
+
+            section->type = 0;
+
+            if (lx_obj->o32_flags & OBJREAD)
+                section->type |= SECTYPE_READ;
+            if (lx_obj->o32_flags & OBJWRITE)
+                section->type |= SECTYPE_WRITE;
+            if (lx_obj->o32_flags & OBJEXEC)
+                section->type |= SECTYPE_EXECUTE;
+
             section->size = lx_obj->o32_size;
-            //io_log("ds=%lx @ %lx, size %lx\n", ds.ds.id, section->addr, section->size);
-            if (lx_obj == code_obj)
-                section->type = SECTYPE_READ | SECTYPE_EXECUTE;
-            else
-                section->type = SECTYPE_READ | SECTYPE_WRITE;
 
             section->id   = (unsigned short)ixfSysDep->secnum;
             section->ds = ds;
@@ -237,6 +256,8 @@ int load_obj_lx(struct LX_module *lx_exe_mod,
     unsigned long data_pages_offs =  get_e32_datapage(lx_exe_mod);
     unsigned long code_mmap_pos = 0;
     unsigned long page_nr = 0;
+    unsigned char buf[0x4004];
+    int ret = 0;
 
     /*struct o32_map * obj_pg_ett = get_obj_map(lx_exe_mod ,startpage);*/
     /*  Reads in all pages from kodobject to designated virtual memory. */
@@ -252,23 +273,32 @@ int load_obj_lx(struct LX_module *lx_exe_mod,
         tmp_vm = vm_ptr_obj;
         tmp_vm_code = tmp_vm + tmp_code;
 
-        lx_exe_mod->lx_fread(tmp_vm_code,
-            obj_pg_sta->o32_pagesize, 1, lx_exe_mod);
+        memset(buf, 0, sizeof(buf));
 
-        // pad page tail with zeroes
-        memset(tmp_vm_code + obj_pg_sta->o32_pagesize, 0, 0x1000 - obj_pg_sta->o32_pagesize);
+        lx_exe_mod->lx_fread(buf, obj_pg_sta->o32_pagesize, 1, lx_exe_mod);
 
-        code_mmap_pos += 0x1000; ////obj_pg_sta->o32_pagesize;
+        // unpack page
+        io_log("unpacking page to %x\n", tmp_vm_code);
+        ret = unpack_page(tmp_vm_code, buf, obj_pg_sta);
 
-        io_log("@@@: page size: %x\n", obj_pg_sta->o32_pagesize);
+        io_log("ret=%d\n", ret);
+
+        if (! ret)
+        {
+            //ret = 1;
+            io_log("page unpack error!\n");
+            break;
+        }
+
+        code_mmap_pos += 0x1000;
     }
 
 
-    return 0;
+    return ret;
 }
 
 
-/* @brief Applies fixups to all objects except impored functions.
+/* @brief Applies fixups to all objects except imported functions.
    Used for programs and dlls.
    ret_rc is an OS/2 error number. */
 
@@ -284,7 +314,7 @@ int do_fixup_code_data_lx(struct LX_module *lx_exe_mod, int *ret_rc)
         {
             if (! do_fixup_obj_lx(lx_exe_mod, obj, ret_rc))
             {
-                return 0; /* Some error happend, return false and forward error in ret_rc. */
+                return 0; /* Some error happened, return false and forward error in ret_rc. */
             }
         }
     }
@@ -297,7 +327,6 @@ int do_fixup_code_data_lx(struct LX_module *lx_exe_mod, int *ret_rc)
 /* Internal Fixup*/
 void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc, unsigned long int vm_start_of_page)
 {
-    unsigned long *ptr_source; // Address to fixup
     short srcoff_cnt1;
     int addit = 0;
     int additive_size = 0;
@@ -336,58 +365,53 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
         else
             object_size = 1;
 
-        short *srcoff = (unsigned short *)
+        short *srcoff = (short *)
             ((char *)min_rlc + 3 * 1 + object_size + trg_off_size + additive_size);
 
         object1 = get_mod_ord1_rlc(min_rlc); /* On the same offset as Object1. */
-        //trgoffs = get_trgoff_size(min_rlc);
+        //trgoffs = get_trg_off_size(min_rlc);
 
         target_object = get_obj(lx_exe_mod, object1);
-        vm_start_target_obj = target_object->o32_reserved;
-        //vm_start_target_obj = target_object->o32_base;
+        ////vm_start_target_obj = target_object->o32_reserved;
+        vm_start_target_obj = target_object->o32_base;
 
         /* Get address of target offset and put in source offset. */
         vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit;
         cnt = get_srcoff_cnt1_rlc(min_rlc);
 
-        io_log("!src=%02x, trg=%02x, cnt=%02x, obj#=%02x, trgoff=%04x, addit=%d\nsrcoffs = ",
-                min_rlc->nr_stype, min_rlc->nr_flags, cnt,
-                min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
+        //io_log("!src=%02x, trg=%02x, cnt=%02x, obj#=%02x, trgoff=%04x, addit=%d\nsrcoffs = ",
+        //        min_rlc->nr_stype, min_rlc->nr_flags, cnt,
+        //        min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
 
         for (i = 0; i < cnt; i++)
         {
             srcoff_cnt1 = srcoff[i];
-
             vm_source = vm_start_of_page + srcoff_cnt1;
-            ptr_source = (unsigned long *)vm_source;
 
-            io_log("%04x ", srcoff_cnt1);
-
-            *ptr_source = vm_target;
+            apply_fixup(min_rlc->nr_stype & 0xf, vm_source, vm_target);
         }
 
-        io_log("\n");
+        //io_log("\n");
     }
     else
     {
         srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
         object1 = get_mod_ord1_rlc(min_rlc); /* On the same offset as Object1. */
-        //trgoffs = get_trgoff_size(min_rlc);
+        //trgoffs = get_trg_off_size(min_rlc);
 
         target_object = get_obj(lx_exe_mod, object1);
-        vm_start_target_obj = target_object->o32_reserved;
-        //vm_start_target_obj = target_object->o32_base;
+        ////vm_start_target_obj = target_object->o32_reserved;
+        vm_start_target_obj = target_object->o32_base;
 
         /* Get address of target offset and put in source offset. */
         vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit;
         vm_source = vm_start_of_page + srcoff_cnt1;
 
-        io_log("!src=%02x, trg=%02x, srcoff=%04x, obj#=%02x, trgoff=%04x, addit=%d\n",
-                min_rlc->nr_stype, min_rlc->nr_flags, srcoff_cnt1,
-                min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
+        //io_log("!src=%02x, trg=%02x, srcoff=%04x, obj#=%02x, trgoff=%04x, addit=%d\n",
+        //        min_rlc->nr_stype, min_rlc->nr_flags, srcoff_cnt1,
+        //        min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
 
-        ptr_source = (unsigned long *)vm_source;
-        *ptr_source = vm_target;
+        apply_fixup(min_rlc->nr_stype & 0xf, vm_source, vm_target);
     }
 }
 
@@ -395,13 +419,32 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
 /* Internal Entry Table Fixup*/
 void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc, unsigned long int vm_start_of_page)
 {
-#if 0
+    enum
+    {
+        UNUSED_ENTRY_SIZE = 2,
+        ENTRY_HEADER_SIZE = 4, /* For all entries except UNUSED ENTRY.*/
+        _16BIT_ENTRY_SIZE = 3,
+        _286_CALL_GATE_ENTRY_SIZE = 5,
+        _32BIT_ENTRY_SIZE         = 5,
+        FORWARD_ENTRY_SIZE        = 7
+    };
+
+    short srcoff_cnt1;
+    int cnt;
+    int addit = 0;
+    int additive_size = 0;
+    int object_size;
     int offs_to_entry_tbl;
     struct b32_bundle *entry_table_start;
     struct b32_bundle *entry_table;
+    struct e32_entry  *entry = NULL;
     char              *cptr_ent_tbl;
-    unsigned long int i_cptr_ent_tbl;
     unsigned long     i, ordinal;
+    unsigned long     cbEntries;
+    unsigned long     offset = 0;
+    unsigned short    target_object = 0;
+    unsigned long     vm_source;
+    unsigned long     vm_target;
 
     /* Offset to Entry Table inside the Loader Section. */
     offs_to_entry_tbl = lx_exe_mod->lx_head_e32_exe->e32_enttab - lx_exe_mod->lx_head_e32_exe->e32_objtab;
@@ -417,24 +460,86 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
         switch (entry_table->b32_type)
         {
             case EMPTY:
-                cptr_ent_tbl += UNUSED_ENTRY_SIZE;
+                for (i = 0; i < entry_table->b32_cnt; i++, cbEntries++)
+                {
+                    if (ordinal == cbEntries)
+                        break;
+
+                    cptr_ent_tbl += UNUSED_ENTRY_SIZE;
+                }
                 entry_table  = (struct b32_bundle *)cptr_ent_tbl;
-                cbEntries    += entry_table->b32_cnt;
                 break;
 
             case ENTRYFWD:
-            case ENTRY32:
-                cptr_ent_tbl   = (char*)entry_table;
                 cptr_ent_tbl   += ENTRY_HEADER_SIZE;
-                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
 
-                vm_start_target_obj = target_object->o32_reserved;
-                //vm_start_target_obj = target_object->o32_base;
+                for (i = 0; i < entry_table->b32_cnt; i++, cbEntries++)
+                {
+                    if (ordinal == cbEntries)
+                        break;
 
-                /* Get address of target offset and put in source offset. */
-                vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc)/*trgoffs*/;
-                vm_source = vm_start_of_page + (void *)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_offset.offset32 +
-                get_obj(lx_mod, entry_table->b32_obj)->o32_base;
+                    cptr_ent_tbl   += FORWARD_ENTRY_SIZE;
+                }
+
+                entry_table  = (struct b32_bundle *)cptr_ent_tbl;
+                break;
+
+            case ENTRY32:
+                cptr_ent_tbl   += ENTRY_HEADER_SIZE;
+
+                for (i = 0; i < entry_table->b32_cnt; i++, cbEntries++)
+                {
+                    if (ordinal == cbEntries)
+                        break;
+
+                    cptr_ent_tbl   += _32BIT_ENTRY_SIZE;
+                }
+
+                if (i < entry_table->b32_cnt)
+                {
+                    entry = (struct e32_entry *)cptr_ent_tbl;
+                    target_object = entry_table->b32_obj;
+                    offset = entry->e32_variant.e32_offset.offset32;
+                    break;
+                }
+
+                entry_table  = (struct b32_bundle *)cptr_ent_tbl;
+                break;
+
+            case GATE16:
+                cptr_ent_tbl   += ENTRY_HEADER_SIZE;
+
+                for (i = 0; i < entry_table->b32_cnt; i++, cbEntries++)
+                {
+                    if (ordinal == cbEntries)
+                        break;
+
+                    cptr_ent_tbl   += _286_CALL_GATE_ENTRY_SIZE;
+                }
+
+                entry_table  = (struct b32_bundle *)cptr_ent_tbl;
+                break;
+
+            case ENTRY16:
+                cptr_ent_tbl   += ENTRY_HEADER_SIZE;
+
+                for (i = 0; i < entry_table->b32_cnt; i++, cbEntries++)
+                {
+                    if (ordinal == cbEntries)
+                        break;
+
+                    cptr_ent_tbl   += _16BIT_ENTRY_SIZE;
+                }
+
+                if (i < entry_table->b32_cnt)
+                {
+                    entry = (struct e32_entry *)cptr_ent_tbl;
+                    target_object = entry_table->b32_obj;
+                    offset = entry->e32_variant.e32_offset.offset16;
+                    break;
+                }
+
+                entry_table  = (struct b32_bundle *)cptr_ent_tbl;
                 break;
 
             default:
@@ -442,10 +547,140 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
                        entry_table->b32_type, entry_table);
                 return; /* Invalid entry */
         }
+
+        if (ordinal == cbEntries)
+            break;
     }
 
-    cbEntries--;
-#endif
+    if (entry_table->b32_cnt && i < entry_table->b32_cnt)
+    {
+        switch (entry_table->b32_type)
+        {
+            case ENTRY16:
+            case ENTRY32:
+                srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
+
+                if (min_rlc->nr_flags & 0x04) // additive present
+                    additive_size = 2;
+
+                if (min_rlc->nr_flags & 0x20) // 32-bit additive field
+                    additive_size = 4;
+
+                if (additive_size)
+                    addit = get_additive_rlc(min_rlc);
+
+                if (min_rlc->nr_stype & NRCHAIN)
+                {
+                    if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
+                        object_size = 2;
+                    else
+                        object_size = 1;
+
+                    short *srcoff = (short *)
+                        ((char *)min_rlc + 3 * 1 + object_size + additive_size);
+
+                    vm_target = get_obj(lx_exe_mod, target_object)->o32_base + offset;
+                    cnt = get_srcoff_cnt1_rlc(min_rlc);
+
+                    for (i = 0; i < cnt; i++)
+                    {
+                        srcoff_cnt1 = srcoff[i];
+                        vm_source = vm_start_of_page + srcoff_cnt1;
+
+                        apply_fixup(min_rlc->nr_stype & 0xf, vm_source, vm_target);
+                    }
+                }
+                else
+                {
+                    vm_source = vm_start_of_page + srcoff_cnt1;
+                    vm_target = get_obj(lx_exe_mod, target_object)->o32_base + offset;
+
+                    apply_fixup(min_rlc->nr_stype & 0xf, vm_source, vm_target);
+                }
+                break;
+
+            default:
+                io_log("Invalid entry type: %u\n", entry_table->b32_type);
+                return;
+        }
+    }
+}
+
+void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target)
+{
+    switch (type)
+    {
+        case 0x00: // 8-bit fixup
+            {
+                unsigned char *ptr_source;
+
+                ptr_source = (unsigned char *)vm_source;
+                *ptr_source = (unsigned char)vm_target;
+            }
+            break;
+
+        case 0x02: // 16-bit selector fixup
+            {
+                unsigned short *ptr_source;
+                unsigned long ptr = flat2sel(vm_target);
+
+                ptr_source = (unsigned short *)vm_source;
+                *ptr_source = (unsigned short)(ptr >> 16);
+            }
+            break;
+
+        case 0x03: // 16:16 pointer fixup
+            {
+                unsigned long *ptr_source;
+                unsigned long ptr = flat2sel(vm_target);
+
+                ptr_source = (unsigned long *)vm_source;
+                *ptr_source = (unsigned long)ptr;
+            }
+            break;
+
+        case 0x05: // 16-bit offset fixup
+            {
+                unsigned short *ptr_source;
+                unsigned long ptr = flat2sel(vm_target);
+
+                ptr_source = (unsigned short *)vm_source;
+                *ptr_source = (unsigned short)(ptr & 0xffff);
+            }
+            break;
+
+        case 0x06: // 16:32 pointer fixup
+            {
+                unsigned short *ptr_source;
+                unsigned long ptr = flat2sel(vm_target);
+
+                ptr_source = (unsigned short *)vm_source;
+                *ptr_source++ = (unsigned short)(ptr >> 16);
+                *(unsigned long *)ptr_source = vm_target;
+            }
+            break;
+
+        case 0x07: // 32-bit fixup
+            {
+                unsigned long *ptr_source; // Address to fixup
+
+                ptr_source = (unsigned long *)vm_source;
+                *ptr_source = vm_target;
+            }
+            break;
+
+        case 0x08: // 32-bit self-relative fixup
+            {
+                unsigned long *ptr_source; // Address to fixup
+
+                ptr_source = (unsigned long *)vm_source;
+                *ptr_source += vm_target - 4;
+            }
+            break;
+
+        default:
+            io_log("Unsupported fixup src: %u\n", type);
+    }
 }
 
 
@@ -525,8 +760,11 @@ int do_fixup_obj_lx(struct LX_module *lx_exe_mod,
         */
         while(fixup_offset < pg_end_offs_fix)
         {
+            int fixup_size;
+
             min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
             print_struct_r32_rlc_info(min_rlc);
+            fixup_size = get_reloc_size_rlc(min_rlc);
 
             fixup_source = min_rlc->nr_stype & 0xf;
             ////fixup_source_flag = min_rlc->nr_stype & 0xf0;
@@ -535,12 +773,10 @@ int do_fixup_obj_lx(struct LX_module *lx_exe_mod,
             {
                 case NRRINT:
                     apply_internal_fixup(lx_exe_mod, min_rlc, vm_start_of_page);
-                    fixup_offset += get_reloc_size_rlc(min_rlc);
                     break;
 
                 case NRRENT:
                     apply_internal_entry_table_fixup(lx_exe_mod, min_rlc, vm_start_of_page);
-                    fixup_offset += get_reloc_size_rlc(min_rlc);
                     break;
 
                 case NRRORD:
@@ -590,7 +826,6 @@ int do_fixup_obj_lx(struct LX_module *lx_exe_mod,
 #endif
 
                 }
-                fixup_offset += get_reloc_size_rlc(min_rlc);
                 break;
 
                 case NRRNAM:
@@ -651,13 +886,15 @@ int do_fixup_obj_lx(struct LX_module *lx_exe_mod,
 #endif
 
                 }
-                fixup_offset += get_reloc_size_rlc(min_rlc);
                 break;
 
                 default:
                     io_log("Unsupported Fixup! SRC: 0x%x \n", fixup_source);
                     return 0; /* Is there any OS/2 error number for this? */
             } /* switch(fixup_source) */
+
+            fixup_offset += fixup_size;
+
         } /* while(fixup_offset < pg_end_offs_fix) { */
     }
 

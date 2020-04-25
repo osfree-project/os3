@@ -19,7 +19,8 @@ void *allocmem(unsigned long long area,
                int size,
                int flags,
                unsigned long PIC,
-               l4_os3_dataspace_t *ds)
+               l4_os3_dataspace_t *ds,
+               int align)
 {
     int rights = translate_os2_flags(flags);
     void *addr;
@@ -29,17 +30,18 @@ void *allocmem(unsigned long long area,
 
     if (rc)
     {
-        return NULL;
+      return NULL;
     }
 
     rc = RegAreaAttach(&addr, size, (unsigned long)area,
-                       rights, *ds, 0, 0);
+                       rights, *ds, 0, align);
 
     if (rc)
     {
-        return NULL;
+      return NULL;
     }
 
+    io_log("alloc dataspace %u, size %u at 0x%x\n", (*ds).ds.id, size, addr);
     return addr;
 
     base = base;
@@ -52,22 +54,22 @@ int translate_os2_flags(int flags)
 
     if (flags & PAG_COMMIT)
     {
-        rights |= DATASPACE_MAP;
+      rights |= DATASPACE_MAP;
     }
 
     if (flags & PAG_EXECUTE)
     {
-        rights |= DATASPACE_READ;
+      rights |= DATASPACE_READ;
     }
 
     if ( (flags & PAG_READ) && ! (flags & PAG_WRITE) )
     {
-        rights |= DATASPACE_WRITE;
+      rights |= DATASPACE_WRITE;
     }
 
     if (flags & PAG_WRITE)
     {
-        rights |= DATASPACE_WRITE;
+      rights |= DATASPACE_WRITE;
     }
 
     return rights;

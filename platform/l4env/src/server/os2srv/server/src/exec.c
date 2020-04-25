@@ -84,11 +84,11 @@ int LoaderExec(char *cmd, char *params, char *vc, l4_os3_task_t *taskid)
       io_log("Can't allocate a dataspace!\n");
       while (1) { l4_sleep(0.1); }
     }
-  io_log("dataspace created\n");
+  //io_log("dataspace created\n");
 
   /* attach the dataspace to our own address space */
   attach_ds(ds, DATASPACE_RW, &addr);
-  io_log("dataspace attached\n");
+  //io_log("dataspace attached\n");
 
   if (vc)
     //sprintf(str, "--stdin %s --stdout %s --stderr %s ", vc, vc, vc);

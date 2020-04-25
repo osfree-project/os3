@@ -18,8 +18,8 @@
 #include <os3/fixuplx.h>
 #include <os3/cfgparser.h>
 
-/* libc defs */
-#include <string.h>
+/* libc includes */
+#include <stdlib.h>
 
 #include <exe.h>
 
@@ -161,6 +161,26 @@ unsigned long LXFixup(void * lx_exe_mod)
     return rc;
 }
 
+/* converts FLAT address to 16:16 address */
+unsigned long flat2sel(unsigned long addr)
+{
+  unsigned short sel;
+  unsigned short offs;
+
+  if (! addr)
+  {
+    return addr;
+  }
+
+  sel = addr >> 16;
+  sel = (sel << 3) | 7;
+  offs = addr & 0xffff;
+
+  addr = (sel << 16) | offs;
+
+  return addr;
+}
+
 
 /* struct e32_exe {
    unsigned long       e32_objtab;     // Object table offset
@@ -253,50 +273,68 @@ unsigned long convert_entry_table_to_BFF(IXFModule *ixfModule)
 
         switch (entry_table->b32_type)
         {
-            case EMPTY:;
-            case ENTRYFWD:;
+            case EMPTY: /* Unused Entry, just skip over them.*/
+            {
+                ixfModule->cbEntries += entry_table->b32_cnt;
+                cptr_ent_tbl += UNUSED_ENTRY_SIZE;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            }
+            break;
+
             case ENTRY32:
-                break;
+            {   /* Jump over that bundle. */
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl += ENTRY_HEADER_SIZE;
+                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+                ixfModule->cbEntries += entry_table->b32_cnt;
+                i_cptr_ent_tbl += _32BIT_ENTRY_SIZE * entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            }
+            break;
+
+            case ENTRY16:
+            {   /* Jump over that bundle. */
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl += ENTRY_HEADER_SIZE;
+                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+                ixfModule->cbEntries += entry_table->b32_cnt;
+                i_cptr_ent_tbl += _16BIT_ENTRY_SIZE * entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            }
+            break;
+
+            case ENTRYFWD:
+            {   /* Jump over that bundle. */
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
+                i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
+                ixfModule->cbEntries += entry_table->b32_cnt;
+                i_cptr_ent_tbl += FORWARD_ENTRY_SIZE * entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            }
+            break;
+
             default:
                 io_log("Unsupported entry type! %d, entry_table: %p\n",
                        entry_table->b32_type, entry_table);
                 return 1; /* Invalid entry. Return ERROR_INVALID_FUNCTION */
         }
-
-        /* Unused Entry, just skip over them.*/
-        if (entry_table->b32_type == EMPTY)
-        {
-            ixfModule->cbEntries += entry_table->b32_cnt;
-            cptr_ent_tbl += UNUSED_ENTRY_SIZE;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
-        }
-        else if (entry_table->b32_type == ENTRY32)
-        {   /* Jump over that bundle. */
-            cptr_ent_tbl = (char *)entry_table;
-            cptr_ent_tbl += ENTRY_HEADER_SIZE;
-            i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
-            ixfModule->cbEntries += entry_table->b32_cnt;
-            i_cptr_ent_tbl += _32BIT_ENTRY_SIZE * entry_table->b32_cnt;
-
-            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
-        }
-        else if (entry_table->b32_type == ENTRYFWD)
-        {   /* Jump over that bundle. */
-            cptr_ent_tbl = (char *)entry_table;
-            cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
-            i_cptr_ent_tbl = (unsigned long int)cptr_ent_tbl;
-            ixfModule->cbEntries += entry_table->b32_cnt;
-            i_cptr_ent_tbl += FORWARD_ENTRY_SIZE * entry_table->b32_cnt;
-
-            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
-        }
-
     }
 
     /* Allocate memory for entries table */
     ixfModule->Entries = (IXFMODULEENTRY *)malloc(ixfModule->cbEntries * sizeof(IXFMODULEENTRY));
+
+    if (! ixfModule->Entries)
+    {
+        io_log("Insufficient memory for entry table!\n");
+        return ERROR_NOT_ENOUGH_MEMORY;
+    }
 
     /* Fill entries table in BFF format */
     entry_table = entry_table_start;
@@ -313,82 +351,104 @@ unsigned long convert_entry_table_to_BFF(IXFModule *ixfModule)
             break;
         }
 
-        switch(entry_table->b32_type)
-        {
-            case EMPTY:;
-            case ENTRYFWD:;
-            case ENTRY32:
-                break;
-            default:
-                io_log("Invalid entry type! %d, entry_table: %p\n",
-                       entry_table->b32_type, entry_table);
-                return 0; /* Invalid entry.*/
-        }
-
         if (options.debugixfmgr)
         {
             io_log("number of entries in bundle %d\n",entry_table->b32_cnt);
             io_log("type=%d\n", entry_table->b32_type);
         }
 
-        /* Unused Entry, just skip over them.*/
-        if (entry_table->b32_type == EMPTY)
+        switch (entry_table->b32_type)
         {
-            for (i = ixfModule->cbEntries; i < ixfModule->cbEntries + entry_table->b32_cnt; i++)
+            case EMPTY: /* Unused Entry, just skip over them.*/
             {
-                ixfModule->Entries[i - 1].FunctionName = NULL;
-                ixfModule->Entries[i - 1].Address = NULL;
-                ixfModule->Entries[i - 1].Ordinal = 0;
-                ixfModule->Entries[i - 1].ModuleName = NULL;
+                for (i = ixfModule->cbEntries; i < ixfModule->cbEntries + entry_table->b32_cnt; i++)
+                {
+                    ixfModule->Entries[i - 1].FunctionName = NULL;
+                    ixfModule->Entries[i - 1].Address = NULL;
+                    ixfModule->Entries[i - 1].Ordinal = 0;
+                    ixfModule->Entries[i - 1].ModuleName = NULL;
+                }
+
+                ixfModule->cbEntries += entry_table->b32_cnt;
+
+                cptr_ent_tbl += UNUSED_ENTRY_SIZE;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
             }
+            break;
 
-            ixfModule->cbEntries += entry_table->b32_cnt;
-
-            cptr_ent_tbl += UNUSED_ENTRY_SIZE;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
-        }
-        else if (entry_table->b32_type == ENTRY32)
-        {
-            cptr_ent_tbl = (char *)entry_table;
-            cptr_ent_tbl += ENTRY_HEADER_SIZE;
-            i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
-
-            for (i = ixfModule->cbEntries; i < ixfModule->cbEntries+entry_table->b32_cnt; i++)
+            case ENTRY32:
             {
-                ixfModule->Entries[i - 1].FunctionName = NULL;
-                ixfModule->Entries[i - 1].Address = (void *)((unsigned long)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_offset.offset32 + get_obj(lx_mod, entry_table->b32_obj)->o32_base);
-                ixfModule->Entries[i - 1].Ordinal = 0;
-                ixfModule->Entries[i - 1].ModuleName = NULL;
-                i_cptr_ent_tbl += _32BIT_ENTRY_SIZE;
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl += ENTRY_HEADER_SIZE;
+                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+
+                for (i = ixfModule->cbEntries; i < ixfModule->cbEntries+entry_table->b32_cnt; i++)
+                {
+                    ixfModule->Entries[i - 1].FunctionName = NULL;
+                    ixfModule->Entries[i - 1].Address = (void *)((unsigned long)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_offset.offset32 + get_obj(lx_mod, entry_table->b32_obj)->o32_base);
+                    ixfModule->Entries[i - 1].Ordinal = 0;
+                    ixfModule->Entries[i - 1].ModuleName = NULL;
+                    i_cptr_ent_tbl += _32BIT_ENTRY_SIZE;
+                }
+
+                ixfModule->cbEntries += entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
             }
+            break;
 
-            ixfModule->cbEntries += entry_table->b32_cnt;
-
-            cptr_ent_tbl = (char *)i_cptr_ent_tbl;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
-        }
-        else if (entry_table->b32_type == ENTRYFWD)
-        {
-            cptr_ent_tbl = (char *)entry_table;
-            cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
-            i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
-
-            for (i = ixfModule->cbEntries; i < ixfModule->cbEntries + entry_table->b32_cnt; i++)
+            case ENTRY16:
             {
-                ixfModule->Entries[i - 1].FunctionName = NULL;
-                ixfModule->Entries[i - 1].Address = NULL;
-                ixfModule->Entries[i - 1].Ordinal = (int)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_fwd.value;
-                copy_pas_str((char *)&buf, get_imp_mod_name((struct LX_module *)(ixfModule->FormatStruct),
-                             ((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_fwd.modord));
-                ixfModule->Entries[i - 1].ModuleName = (char *)malloc(strlen(buf) + 1);
-                strcpy(ixfModule->Entries[i - 1].ModuleName, buf);
-                i_cptr_ent_tbl += FORWARD_ENTRY_SIZE;
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl += ENTRY_HEADER_SIZE;
+                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
+
+                for (i = ixfModule->cbEntries; i < ixfModule->cbEntries+entry_table->b32_cnt; i++)
+                {
+                    ixfModule->Entries[i - 1].FunctionName = NULL;
+                    ixfModule->Entries[i - 1].Address = (void *)((unsigned long)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_offset.offset16 + flat2sel(get_obj(lx_mod, entry_table->b32_obj)->o32_base));
+                    ixfModule->Entries[i - 1].Ordinal = 0;
+                    ixfModule->Entries[i - 1].ModuleName = NULL;
+                    i_cptr_ent_tbl += _16BIT_ENTRY_SIZE;
+                }
+
+                ixfModule->cbEntries += entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char *)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
             }
+            break;
 
-            ixfModule->cbEntries += entry_table->b32_cnt;
+            case ENTRYFWD:
+            {
+                cptr_ent_tbl = (char *)entry_table;
+                cptr_ent_tbl = &cptr_ent_tbl[ENTRY_HEADER_SIZE];
+                i_cptr_ent_tbl = (unsigned long)cptr_ent_tbl;
 
-            cptr_ent_tbl = (char*)i_cptr_ent_tbl;
-            entry_table = (struct b32_bundle *)cptr_ent_tbl;
+                for (i = ixfModule->cbEntries; i < ixfModule->cbEntries + entry_table->b32_cnt; i++)
+                {
+                    ixfModule->Entries[i - 1].FunctionName = NULL;
+                    ixfModule->Entries[i - 1].Address = NULL;
+                    ixfModule->Entries[i - 1].Ordinal = (int)((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_fwd.value;
+                    copy_pas_str((char *)&buf, get_imp_mod_name((struct LX_module *)(ixfModule->FormatStruct),
+                         ((struct e32_entry *)(i_cptr_ent_tbl))->e32_variant.e32_fwd.modord));
+                    ixfModule->Entries[i - 1].ModuleName = (char *)malloc(strlen(buf) + 1);
+                    strcpy(ixfModule->Entries[i - 1].ModuleName, buf);
+                    i_cptr_ent_tbl += FORWARD_ENTRY_SIZE;
+                }
+
+                ixfModule->cbEntries += entry_table->b32_cnt;
+
+                cptr_ent_tbl = (char*)i_cptr_ent_tbl;
+                entry_table = (struct b32_bundle *)cptr_ent_tbl;
+            }
+            break;
+
+            default:
+                io_log("Invalid entry type! %d, entry_table: %p\n",
+                       entry_table->b32_type, entry_table);
+                return 0; /* Invalid entry.*/
         }
     }
 
@@ -641,9 +701,9 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
         */
         while (fixup_offset < pg_end_offs_fix)
         {
-            io_log("fixup_offset=%lx\n", fixup_offset);
+            //io_log("fixup_offset=%lx\n", fixup_offset);
             min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
-            io_log("min_rlc=%lx\n", min_rlc);
+            //io_log("min_rlc=%lx\n", min_rlc);
             print_struct_r32_rlc_info(min_rlc);
 
             fixup_source = min_rlc->nr_stype & 0xf;
@@ -706,6 +766,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
                                    mod_ord_size, import_ord_size, additive_size);
                             io_log("srcoff[%i]=%x, \n", i, srcoff[i]);
 
+                            ixfModule->Fixups[*fixup_counter].flags = min_rlc->nr_stype & 0xf;
                             ixfModule->Fixups[*fixup_counter].SrcVmAddress = (void *)(vm_start_of_page + srcoff_cnt1);
                             ixfModule->Fixups[*fixup_counter].SrcAddress = (void *)(start_of_page + srcoff_cnt1 - addit);
                             ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = NULL;
@@ -719,6 +780,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
                     {
                         srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
 
+                        ixfModule->Fixups[*fixup_counter].flags = min_rlc->nr_stype & 0xf;
                         ixfModule->Fixups[*fixup_counter].SrcVmAddress = (void *)(vm_start_of_page + srcoff_cnt1);
                         ixfModule->Fixups[*fixup_counter].SrcAddress = (void *)(start_of_page + srcoff_cnt1 - addit);
                         ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = NULL;
@@ -778,6 +840,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
                         {
                             srcoff_cnt1 = srcoff[i];
 
+                            ixfModule->Fixups[*fixup_counter].flags = min_rlc->nr_stype & 0xf;
                             ixfModule->Fixups[*fixup_counter].SrcVmAddress = (void *)(vm_start_of_page + srcoff_cnt1);
                             ixfModule->Fixups[*fixup_counter].SrcAddress = (void *)(start_of_page + srcoff_cnt1 - addit);
                             ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = (char *)malloc(strlen(import_name) + 1);
@@ -792,6 +855,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
                     {
                         srcoff_cnt1 = get_srcoff_cnt1_rlc(min_rlc);
 
+                        ixfModule->Fixups[*fixup_counter].flags = min_rlc->nr_stype & 0xf;
                         ixfModule->Fixups[*fixup_counter].SrcVmAddress = (void *)(vm_start_of_page + srcoff_cnt1);
                         ixfModule->Fixups[*fixup_counter].SrcAddress = (void *)(start_of_page + srcoff_cnt1 - addit);
                         ixfModule->Fixups[*fixup_counter].ImportEntry.FunctionName = (char *)malloc(strlen(import_name) + 1);

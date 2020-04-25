@@ -97,7 +97,7 @@ void parse_options(int argc, char **argv, struct options *opts)
   // Parse command line arguments
   for (;;)
     {
-      opt = getopt_long(argc, (char **)argv, "s:c:b:f:e", long_options, &optionid);
+      opt = getopt_long(argc, (char **)argv, "s:d:m:c:b:f:e", long_options, &optionid);
 
       if (opt == -1)
         break;
@@ -126,6 +126,7 @@ void parse_options(int argc, char **argv, struct options *opts)
             break;
 
         case -1:
+        case '?':
             // prevents showing fstab_info if no more option exists
             break;
 
@@ -168,7 +169,7 @@ int main(int argc, char **argv)
       while (1) l4_sleep(0.1);
     }
 
-  io_log("loader id: %x.%x", loader_id.thread.id.task, loader_id.thread.id.lthread);
+  io_log("loader id: %x.%x\n", loader_id.thread.id.task, loader_id.thread.id.lthread);
 
   /* query default dataspace manager id */
   dsm_id.thread = l4env_get_default_dsm();

@@ -9,6 +9,8 @@
 #define  INCL_BASE
 #include <os2.h>
 
+#include <exe386.h>
+
 /* osFree internal */
 #include <os3/dataspace.h>
 #include <os3/thread.h>
@@ -24,6 +26,8 @@
 #include <os3/cpi.h>
 #include <os3/fs.h>
 #include <os3/app.h>
+
+#include <l4/util/util.h>
 
 /* libc includes*/
 #include <unistd.h>
@@ -102,6 +106,8 @@ extern PPIB ppib;
 vmdata_t *areas_list = NULL;
 
 struct start_data;
+
+extern l4_os3_thread_t me;
 
 vmdata_t *get_area(void *addr);
 vmdata_t *get_mem_by_name(char *pszName);
@@ -615,9 +621,13 @@ long attach_module (ULONG hmod, unsigned long long area)
   //l4_threadid_t pager;
   unsigned short type;
   unsigned long index;
+  unsigned char acc;
+  unsigned long base, size;
+  struct desc    desc;
+  int            i;
   ULONG rc;
 
-  io_log("attach_module: area=%x, hmod=%x\n", area, hmod);
+  io_log("attach_module: area=%llx, hmod=%lx\n", area, hmod);
 
   index = 0; rc = NO_ERROR;
   while (! ExcClientGetSect (hmod, &index, &sect) && ! rc)
@@ -625,6 +635,7 @@ long attach_module (ULONG hmod, unsigned long long area)
     ds    = sect.ds;
     addr  = sect.addr;
     type  = sect.type;
+    size  = sect.size;
     flags = 0;
 
     if (type & SECTYPE_READ)
@@ -637,19 +648,55 @@ long attach_module (ULONG hmod, unsigned long long area)
       flags |= DATASPACE_WRITE;
     }
 
+    if (! rc)
+      io_log("ds %u attached at %x, area %x, flags %x\n",
+             ds.ds.id, addr, area, flags);
+    //else if (rc != -L4_EUSED)
+    else if (rc != ERROR_ALREADY_USED)
+    {
+      io_log("attach_ds_area returned %d\n", rc);
+      break;
+    }
+
     if ( (rc = RegLookupRegion(addr, &map_addr, &map_size, &offset, &area_ds)) &&
          (rc == REG_FREE || rc == REG_RESERVED) )
     {
       rc = attach_ds_area (ds, area, flags, addr);
 
-      if (! rc)
-        io_log("ds %u attached at %x, area %x, flags %x\n",
-               ds.ds.id, addr, area, flags);
-      //else if (rc != -L4_EUSED)
-      else if (rc != ERROR_ALREADY_USED)
+      // object requires 16:16 alias or is a data segment
+      if ( (sect.flags & OBJALIAS16) || (type & SECTYPE_WRITE) )
       {
-        io_log("attach_ds_area returned %d\n", rc);
-        break;
+        // descriptor access bits
+        if (type & SECTYPE_EXECUTE)
+          acc = 0xfa;
+        else
+          acc = 0xf3;
+
+        io_log("type=%x, sect.flags=%lx\n", type, sect.flags);
+        io_log("acc=%x\n", acc);
+
+        i = (unsigned long)addr >> 16;
+
+        base = i << 16;
+        io_log("ds %x @ %x, size %u\n", ds.ds.id, addr, size);
+        io_log("base=%x\n", base);
+
+        desc.limit_lo = (size - 1) & 0xffff; desc.limit_hi = (size - 1) >> 16;
+        desc.acc_lo   = acc;           desc.acc_hi   = 0;
+        desc.base_lo1 = base & 0xffff;
+        desc.base_lo2 = (base >> 16) & 0xff;
+        desc.base_hi  = base >> 24;
+
+        segment_ldt_set(&desc, sizeof(struct desc), i, me);
+
+        // touch page ro
+        if (sect.flags & OBJALIAS16)
+        {
+            volatile char *p = base;
+
+            for (i = 0, p = (char *)base; i < size; i++, p++)
+                *p;
+        }
       }
     }
     else
@@ -2715,8 +2762,14 @@ KalGetTIDNative(l4_os3_thread_t id, TID *pthid)
   //rc = os2server_dos_GetTIDNative_call(&os2srv, &id, pthid,  &env);
   //rc = CPClientGetTIDNative(&id, pthid);
 
+  io_log("$$$ id.thread.id.task=%u, id.thread.id.lthread=%u\n",
+         id.thread.id.task, id.thread.id.lthread);
+
   for (i = 0; i < MAX_TID; i++)
   {
+    io_log("$$$ ptid[%u].thread.id.task=%u, ptid[%u].thread.id.lthread=%u\n",
+           i, ptid[i].thread.id.task, i, ptid[i].thread.id.lthread);
+
     if ( ThreadEqual(ptid[i], id) )
       break;
   }
@@ -2769,6 +2822,8 @@ KalGetTIB(PTIB *ptib)
 
   KalGetPID(&pid);
   KalGetTID(&tid);
+
+  io_log("pid=%u, tid=%u\n", pid, tid);
 
   //rc = os2server_dos_GetTIB_call(&os2srv, &ds.ds, &env);
   rc = CPClientGetTIB(pid, tid, &ds);

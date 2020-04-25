@@ -31,11 +31,8 @@
 #include <os3/ixfmgr.h>
 #include <os3/loadobjlx.h>
 
-/* libc defs */
-#include <stdio.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <string.h>
+/* libc includes */
+#include <stdlib.h>
 
 #ifndef ENEWHDR
     #define ENEWHDR 0x3c
@@ -255,7 +252,8 @@ int LXLoadObjects(IXFModule *ixfModule)
         //alloc_mem_area(&root_area, (void *)kod_obj->o32_base, kod_obj->o32_size);
         alloc_mem_area(&root_area, (void *)kod_obj->o32_reserved, kod_obj->o32_size);
 
-        if (vm_code_obj == MAP_FAILED)
+        //if (vm_code_obj == MAP_FAILED)
+        if (! vm_code_obj)
         {
             io_log("Error mapping memory for (code)\n");
             print_o32_obj_info(*kod_obj, "object code");

@@ -14,6 +14,10 @@ void segment_gdt_set(void *desc, unsigned int size,
 
 unsigned segment_gdt_get_entry_offset(void);
 
+void segment_ldt_set(void *desc, unsigned int size,
+                     unsigned int entry_number_start,
+                     l4_os3_thread_t tid);
+
 #if defined(__l4env__) || defined(__l4re__)
 
 #include <l4/sys/segment.h>

@@ -8,7 +8,7 @@ TRG             = lx.ixf
 MODE		= l4env
 SYSTEMS		= x86-l4v2
 SRC_C		= lx.c mod.c load.c loadobj.c \
-                  fixup.c debug.c allocmem.c
+                  fixup.c debug.c allocmem.c unpack.c
 CFLAGS          += -I$(PKGDIR)/include
 
 NO_DEFAULT_RELOC= 1

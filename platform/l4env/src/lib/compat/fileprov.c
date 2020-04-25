@@ -50,8 +50,8 @@ int io_load_file(const char *filename, void **addr, unsigned long *size)
   l4dm_dataspace_t ds;
   int  rc;
 
-  io_log("filename=%s\n", filename);
-  io_log("fileprov=%lu.%lu\n", fprov_id.thread.id.task, fprov_id.thread.id.lthread);
+  //io_log("filename=%s\n", filename);
+  //io_log("fileprov=%lu.%lu\n", fprov_id.thread.id.task, fprov_id.thread.id.lthread);
 
   /* query default dataspace manager id */
   if (l4_is_invalid_id(dsm))
@@ -70,19 +70,19 @@ int io_load_file(const char *filename, void **addr, unsigned long *size)
   rc = l4fprov_file_open_call(&fprov_id.thread, filename, &dsm, 0,
                        &ds, (l4_size_t *)size, &env);
 
-  io_log("rc=%d\n", rc);
+  //io_log("rc=%d\n", rc);
 
   //if (rc == -L4_ENOTFOUND)
   if (rc == 2)
     return rc; /* ERROR_FILE_NOT_FOUND */
 
-  io_log("size=%lu\n", *size);
+  //io_log("size=%lu\n", *size);
 
   /* attach the created dataspace to our address space */
   // rc = l4rm_attach(&ds, *size, 0, L4DM_RW | L4RM_MAP, addr);
   rc = l4rm_attach(&ds, *size, 0, L4DM_RW | L4RM_MAP, addr);
 
-  io_log("addr=%lu\n", *addr);
+  //io_log("addr=%lu\n", *addr);
 
   if (rc < 0)
     return 8; /* What to return? */
@@ -126,10 +126,10 @@ int io_load_file(const char * filename, void ** addr, unsigned long * size)
   char buf[256];
   int  len, i;
 
-  io_log("filename=%s\n", filename);
+  //io_log("filename=%s\n", filename);
   char drv = get_drv(filename);
 
-  io_log("drv=%c:\n", drv);
+  //io_log("drv=%c:\n", drv);
 
   if(drv == '\0') 
   {
@@ -137,29 +137,29 @@ int io_load_file(const char * filename, void ** addr, unsigned long * size)
   }
 
   char * directory = get_directory(filename);
-  io_log("directory=%s\n", directory);
+  //io_log("directory=%s\n", directory);
   if (directory==NULL)
   {
     return 2; /* ERROR_FILE_NOT_FOUND */
   }
   char * name = get_name(filename);
-  io_log("name=%s\n", name);
+  //io_log("name=%s\n", name);
 
   DosNameConversion(directory);
   DosNameConversion(name);
 
-  io_log("directory=%s\n", directory);
-  io_log("name=%s\n", name);
+  //io_log("directory=%s\n", directory);
+  //io_log("name=%s\n", name);
 #if 0
-  io_log("srv_num_=%d\n", fsrouter.srv_num_);
+  //io_log("srv_num_=%d\n", fsrouter.srv_num_);
   for(i=0; i< fsrouter.srv_num_; i++)
   {
     I_Fs_srv_t *srv = fsrouter.fs_srv_arr_[i];
-    if (srv)
-    {
-      io_log("srv->drive=%s, srv->mountpoint=%s\n", srv->drive, srv->mountpoint);
-    }
-  }    
+    //if (srv)
+    //{
+    //  io_log("srv->drive=%s, srv->mountpoint=%s\n", srv->drive, srv->mountpoint);
+    //}
+  }
 #endif
   struct I_Fs_srv *target_fs_srv = FSRouter_route(&fsrouter, drv);
 
@@ -191,14 +191,14 @@ int io_load_file(const char * filename, void ** addr, unsigned long * size)
     io_log("opendir() successful\n");
 
 
-  io_log("name=%s\n", name);
+  //io_log("name=%s\n", name);
   while(diren = readdir(dir)) 
   {
         len = strlen(name);
         strncpy(buf, diren->d_name, len);
 	buf[len] = '\0';
-        io_log("diren->d_name=%s\n", diren->d_name);
-	io_log("buf=%s\n", buf);
+        //io_log("diren->d_name=%s\n", diren->d_name);
+	//io_log("buf=%s\n", buf);
         if(!diren)
             break;
         if(strcasecmp(buf, name)==0) {
@@ -223,7 +223,7 @@ int io_load_file(const char * filename, void ** addr, unsigned long * size)
 
   //io_log("newfilename=%s", newfilename);
   f = fopen(newfilename, "rb");
-  io_log("file opened\n");
+  //io_log("file opened\n");
   if(f) {
      fseek(f, 0, SEEK_END);
      *size = ftell(f);  /* Extract the size of the file and reads it into a buffer.*/
@@ -231,7 +231,7 @@ int io_load_file(const char * filename, void ** addr, unsigned long * size)
      *addr = (void *)malloc(*size+1);
      fread(*addr, *size, 1, f);
      fclose(f);
-     io_log("successful return\n");
+     //io_log("successful return\n");
      return 0; /*NO_ERROR;*/
   }
 

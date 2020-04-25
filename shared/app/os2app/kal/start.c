@@ -53,6 +53,7 @@ trampoline(struct param *param)
 
   unsigned long     base;
   struct desc       desc;
+  int               i;
 
   /* TIB base */
   base = (unsigned long)param->tib;
@@ -82,7 +83,7 @@ trampoline(struct param *param)
   io_log("stack top: %x\n", param->esp);
 
   /* We have changed the stack so it now points to our LX image. */
-  enter_kdebug("debug");
+  //enter_kdebug("debug");
   old_sel = tramp(argv, envp, hmod, tib_sel, param->eip);
 
   STKOUT
@@ -112,6 +113,9 @@ l4_os3_thread_t thread;
 struct param param;
 APIRET rc;
 
+unsigned long base, size;
+struct desc    desc;
+
 HFILE hf0, hf1, hf2;
 Jft_Entry *jft_entry;
 ULONG ulAction;
@@ -124,6 +128,22 @@ int i;
 
 APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadError)
 {
+  // create LDT for tiled area
+  for (i = 0; i < 8192; i++)
+  {
+      int size = 0x10000;
+
+      base = i * size;
+
+      desc.limit_lo = size & 0xffff; desc.limit_hi = size >> 16;
+      desc.acc_lo   = 0xF3;          desc.acc_hi   = 0;
+      desc.base_lo1 = base & 0xffff;
+      desc.base_lo2 = (base >> 16) & 0xff;
+      desc.base_hi  = base >> 24;
+
+      segment_ldt_set(&desc, sizeof(struct desc), i, me);
+  }
+
   /* Load the LX executable */
   rc = KalPvtLoadModule(pszLoadError, &cbLoadError,
                         opts->progname, &s, &hmod);
@@ -204,18 +224,21 @@ APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadE
 
   io_log("Successfully allocated stdio file descriptors.\n");
 
+  ptid[0] = KalNativeID();
+
+  io_log("@@@ ptid[0].thread.id.task=%u, ptid[0].thread.id.lthread=%u\n",
+         ptid[0].thread.id.task, ptid[0].thread.id.lthread);
+
+  // initialize TIDs array
+  for (i = 1; i < MAX_TID; i++)
+    ptid[i] = INVALID_THREAD;
+
   /* get the info blocks (needed by C startup code) */
   rc = KalMapInfoBlocks(&ptib[0], &ppib);
 
   // initialize TIB pointers array
   for (i = 1; i < MAX_TID; i++)
     ptib[i] = NULL;
-
-  ptid[0] = KalNativeID();
-
-  // initialize TIDs array
-  for (i = 1; i < MAX_TID; i++)
-    ptid[i] = INVALID_THREAD;
 
   param.pib = ppib;
   param.tib = ptib[0];

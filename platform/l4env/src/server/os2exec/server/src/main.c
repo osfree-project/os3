@@ -157,6 +157,8 @@ void parse_options(int argc, char *argv[], struct options *opts)
   const struct option long_options[] =
                 {
                 { "events",      no_argument, NULL, 'e'},
+                { "TIMEOUT",     1,           NULL, 't' },
+                { "LOOKFOR",     1,           NULL, 'l' },
                 { 0, 0, 0, 0}
                 };
 
@@ -166,7 +168,7 @@ void parse_options(int argc, char *argv[], struct options *opts)
   // Parse command line arguments
   for (;;)
   {
-    opt = getopt_long(argc, argv, "e", long_options, &optionid);
+    opt = getopt_long(argc, argv, "e:t:l", long_options, &optionid);
 
     if (opt == -1)
       break;
@@ -176,6 +178,11 @@ void parse_options(int argc, char *argv[], struct options *opts)
       case 'e':
         io_log("using events server\n");
         opts->use_events = 1;
+        break;
+
+      case 't':
+      case 'l':
+      case '?':
         break;
 
       default:

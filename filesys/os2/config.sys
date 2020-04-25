@@ -14,3 +14,5 @@ LIBPATH=c:\
 SET PATH=.;c:\os2;c:\os2\mdos
 SET DPATH=.;c:\;c:\os2
 SET TZ=MSK-12MSD,3,-1,0,7200,10,-1,0,7200,3600
+SET EMXOPT=-n -h2048
+

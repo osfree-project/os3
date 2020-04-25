@@ -24,8 +24,8 @@ long excShare(mod_list_t **list, unsigned long hmod, l4_os3_thread_t client_id);
 extern IXFHandler *IXFHandlers;
 
 /* shared memory arena settings */
-void          *shared_memory_base = (void *)0x60000000;
-unsigned long  shared_memory_size = 1024 * 1024 * 1024;
+void          *shared_memory_base = (void *)0x10000000;
+unsigned long  shared_memory_size = 256 * 1024 * 1024;
 unsigned long long shared_memory_area;
 
 vmdata_t *areas_list = NULL;
@@ -163,6 +163,7 @@ long ExcGetSect(unsigned long hmod,
     io_log("r->section->type=%x\n", r->section->type);
     memcpy((char *)sect, (char *)r->section, sizeof(l4_os3_section_t));
     io_log("sect->type=%x\n", sect->type);
+    io_log("$$$1 sect->flags=%x\n", sect->flags);
     ++ *index;
 
     return 0;

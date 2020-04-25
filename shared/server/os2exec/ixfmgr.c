@@ -67,10 +67,14 @@ IXFLoadModule(void *addr, unsigned long size, IXFModule *ixfModule)
      io_log("IXFLoadModule: Loading module.\n");
   }
 
-  if (ixfModule->refcnt++)
+  io_log("x000: refcnt=%u\n", ixfModule->refcnt);
+  if (ixfModule->refcnt)
   {
       return 0;
   }
+
+  ixfModule->refcnt++;
+  io_log("x001\n");
 
   ret = ixfModule->Load(addr, size, ixfModule);
 
@@ -101,13 +105,14 @@ unsigned long IXFAllocModule(IXFModule **ixf)
     if (! *ixf)
         return ERROR_NOT_ENOUGH_MEMORY;
 
+    memset(*ixf, 0, sizeof(IXFModule));
+
     sysdep = (IXFSYSDEP *)malloc(sizeof(IXFSYSDEP));
 
     if (! sysdep)
         return ERROR_NOT_ENOUGH_MEMORY;
 
-    sysdep->secnum  = 0;
-    sysdep->seclist = NULL;
+    memset(sysdep, 0, sizeof(IXFSYSDEP));
 
     (*ixf)->hdlSysDep = (unsigned long long)sysdep;
 
@@ -116,13 +121,20 @@ unsigned long IXFAllocModule(IXFModule **ixf)
 
 unsigned long IXFFreeModule(IXFModule *ixf)
 {
+    io_log("y000: refcnt=%u\n", ixf->refcnt);
+
     if (! ixf || ! ixf->hdlSysDep)
         return ERROR_INVALID_PARAMETER;
 
-    if (--ixf->refcnt)
+    io_log("y001\n");
+
+    if (ixf->refcnt)
     {
+        ixf->refcnt--;
         return NO_ERROR;
     }
+
+    io_log("y002\n");
 
     if (ixf->name)
     {

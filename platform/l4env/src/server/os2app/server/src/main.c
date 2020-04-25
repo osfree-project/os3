@@ -179,7 +179,7 @@ void parse_options(int argc, char *argv[], struct options *opts)
   // Parse command line arguments
   for (;;)
   {
-    opt = getopt_long(argc, argv, "e", long_options, &optionid);
+    opt = getopt_long(argc, argv, "e:t", long_options, &optionid);
     if (opt == -1) break;
     switch (opt)
     {
@@ -191,6 +191,9 @@ void parse_options(int argc, char *argv[], struct options *opts)
       case 't':
         opts->term = optarg;
         io_log("using %s as a terminal\n", optarg);
+        break;
+
+      case '?':
         break;
 
       default:

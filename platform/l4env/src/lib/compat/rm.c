@@ -190,6 +190,36 @@ long RegAreaReserve(unsigned long size,
     return RegAreaReserveInArea(size, flags, addr, area);
 }
 
+static int
+__find_free_region(l4_size_t size, l4_uint32_t area, int align, 
+                   l4rm_region_desc_t ** region, l4_addr_t * addr)
+{
+  l4rm_region_desc_t *rp = l4rm_get_region_list();
+  l4_size_t a_size = 1UL << align;
+  l4_addr_t a_addr, offs;
+
+  /* search region */
+  while (rp)
+    {
+      if (IS_FREE_REGION(rp) && (REGION_AREA(rp) == area))
+        {
+          a_addr = (rp->start + a_size - 1) & ~(a_size - 1);
+          offs = a_addr - rp->start;
+          if ((rp->end - rp->start + 1) >= (size + offs))
+            {
+              /* found suitable region */
+              *region = rp;
+              *addr = a_addr;
+              return 0;
+            }
+        }
+      rp = rp->next;
+    }
+
+  /* nothing found */
+  return -L4_ENOMAP;
+}
+
 long RegAreaAttach(void               **addr,
                    unsigned long      size,
                    unsigned long long area,
@@ -199,6 +229,7 @@ long RegAreaAttach(void               **addr,
                    unsigned char      align)
 {
     ULONG rights = 0;
+    l4rm_region_desc_t *region;
     int rc = NO_ERROR;
 
     if (flags & DATASPACE_READ)
@@ -206,7 +237,11 @@ long RegAreaAttach(void               **addr,
     if (flags & DATASPACE_WRITE)
         rights |= L4DM_WRITE;
 
-    rc = l4rm_area_attach(&ds.ds, (unsigned long)area, size, offset, rights, addr);
+    if (! (rc = __find_free_region(size, area, align, &region, addr)) )
+    {
+        rc = l4rm_area_attach_to_region(&ds.ds, (unsigned long)area, *addr, size,
+                                        offset, rights);
+    }
 
     if (rc < 0)
     {
