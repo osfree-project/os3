@@ -7,7 +7,8 @@ include $(REP_DIR)/mk/osfree.mk
 # contain a Makefile. If you need to change this, uncomment the following
 # line and adapt it.
 
-PATCHES = l4rm l4vfs modes modules-max
+PATCHES = l4rm l4vfs modes modules-max \
+          force-ds-es ldtsize
 
 apply:
 	@cd $(ROOT) && for file in $(PATCHES); do \

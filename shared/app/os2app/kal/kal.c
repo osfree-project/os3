@@ -621,10 +621,10 @@ long attach_module (ULONG hmod, unsigned long long area)
   //l4_threadid_t pager;
   unsigned short type;
   unsigned long index;
-  unsigned char acc;
+  unsigned char acc, acc2;
   unsigned long base, size;
   struct desc    desc;
-  int            i;
+  int            i = 0, j = 0, l;
   ULONG rc;
 
   io_log("attach_module: area=%llx, hmod=%lx\n", area, hmod);
@@ -664,17 +664,23 @@ long attach_module (ULONG hmod, unsigned long long area)
       rc = attach_ds_area (ds, area, flags, addr);
 
       // object requires 16:16 alias or is a data segment
-      if ( (sect.flags & OBJALIAS16) || (type & SECTYPE_WRITE) )
+      //if ( (sect.flags & OBJALIAS16) || (sect.flags & OBJBIGDEF) )
       {
         // descriptor access bits
         if (type & SECTYPE_EXECUTE)
           acc = 0xfa;
         else
-          acc = 0xf3;
+          acc = 0xf2;
+
+        if (sect.flags & OBJBIGDEF)
+          acc2 = 0x04;
+        else
+          acc2 = 0;
 
         io_log("type=%x, sect.flags=%lx\n", type, sect.flags);
         io_log("acc=%x\n", acc);
 
+        j = i;
         i = (unsigned long)addr >> 16;
 
         base = i << 16;
@@ -682,19 +688,26 @@ long attach_module (ULONG hmod, unsigned long long area)
         io_log("base=%x\n", base);
 
         desc.limit_lo = (size - 1) & 0xffff; desc.limit_hi = (size - 1) >> 16;
-        desc.acc_lo   = acc;           desc.acc_hi   = 0;
+        desc.acc_lo   = acc;           desc.acc_hi   = acc2;
         desc.base_lo1 = base & 0xffff;
         desc.base_lo2 = (base >> 16) & 0xff;
         desc.base_hi  = base >> 24;
 
-        segment_ldt_set(&desc, sizeof(struct desc), i, me);
+        io_log("size - 1=%x\n", size - 1);
+        io_log("desc.limit_lo=%x\n", desc.limit_lo);
+        io_log("i=%x, j=%x\n", i, j);
+
+        if (i > j) // if we have a new 16-bit seg
+        {
+            segment_ldt_set(&desc, sizeof(struct desc), i, me);
+        }
 
         // touch page ro
-        if (sect.flags & OBJALIAS16)
+        //if ( (sect.flags & OBJALIAS16) || (sect.flags & OBJBIGDEF) )
         {
             volatile char *p = base;
 
-            for (i = 0, p = (char *)base; i < size; i++, p++)
+            for (l = 0, p = (char *)base; l < size; l++, p++)
                 *p;
         }
       }

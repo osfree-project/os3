@@ -1198,6 +1198,10 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
   unsigned long absolute_jmp;
   //char name[256];
   struct module_rec *prev;
+  unsigned short flat_cs;
+
+  asm volatile("movw %%cs, %%ax\n\t"
+               "movw %%ax, %[flat_cs]\n\t"::[flat_cs] "m" (flat_cs));
 
   //enter_kdebug(">");
 
@@ -1286,13 +1290,12 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
       case 0x06: // 16:32 pointer fixup
         {
           unsigned short *src;
-          unsigned long ptr;
 
-          ptr = flat2sel(absolute_jmp);
           src = (unsigned short *)src_off;
 
-          *(src++) = ptr >> 16;
-          *((unsigned long *)src) = absolute_jmp;
+          *(unsigned long *)src = absolute_jmp;
+          src += 2;
+          *src = flat_cs;
         }
         break;
 

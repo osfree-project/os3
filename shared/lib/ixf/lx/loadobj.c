@@ -159,7 +159,7 @@ void *vm_alloc_obj_lx(IXFModule *ixfModule, struct o32_obj *lx_obj)
         #ifndef __OS2__
             #include <os3/allocmem.h>
 
-            if (lx_obj->o32_flags & OBJALIAS16)
+            //if (lx_obj->o32_flags & OBJALIAS16)
             {
                 align = 16; // align 16-bit segments to 64k boundary
             }
@@ -336,6 +336,8 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
     unsigned long vm_start_target_obj;
     unsigned long vm_source;
     unsigned long vm_target;
+    int trg_off_size = 0;
+    int object_size = 0;
     int i, cnt;
 
     if (min_rlc->nr_flags & 0x04) // additive present
@@ -347,24 +349,21 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
     if (additive_size)
         addit = get_additive_rlc(min_rlc);
 
+    if (min_rlc->nr_flags & 0x10) // 32-bit target offset flag
+        trg_off_size = 4;
+    else
+        trg_off_size = 2;
+
+    if ( (min_rlc->nr_stype & NRSRCMASK) == 0x02) // 16-bit selector fixup
+        trg_off_size = 0;
+
+    if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
+        object_size = 2;
+    else
+        object_size = 1;
+
     if (min_rlc->nr_stype & NRCHAIN)
     {
-        int trg_off_size = 0;
-        int object_size = 0;
-
-        if (min_rlc->nr_flags & 0x10) // 32-bit target offset flag
-            trg_off_size = 4;
-        else
-            trg_off_size = 2;
-
-        if ( (min_rlc->nr_stype & NRSRCMASK) == 0x02) // 16-bit selector fixup
-            trg_off_size = 0;
-
-        if (min_rlc->nr_flags & 0x40) // 16-bit object number/module ordinal flag
-            object_size = 2;
-        else
-            object_size = 1;
-
         short *srcoff = (short *)
             ((char *)min_rlc + 3 * 1 + object_size + trg_off_size + additive_size);
 
@@ -376,7 +375,14 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
         vm_start_target_obj = target_object->o32_base;
 
         /* Get address of target offset and put in source offset. */
-        vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit;
+        vm_target = vm_start_target_obj + addit;
+
+        if (trg_off_size)
+        {
+            // 16-bit selector fixup has target offset missing
+            vm_target += get_imp_ord1_rlc(min_rlc);
+        }
+
         cnt = get_srcoff_cnt1_rlc(min_rlc);
 
         //io_log("!src=%02x, trg=%02x, cnt=%02x, obj#=%02x, trgoff=%04x, addit=%d\nsrcoffs = ",
@@ -404,9 +410,17 @@ void apply_internal_fixup(struct LX_module *lx_exe_mod, struct r32_rlc *min_rlc,
         vm_start_target_obj = target_object->o32_base;
 
         /* Get address of target offset and put in source offset. */
-        vm_target = vm_start_target_obj + get_imp_ord1_rlc(min_rlc) + addit;
+        vm_target = vm_start_target_obj + addit;
+
+        if (trg_off_size)
+        {
+            // 16-bit selector fixup has target offset missing
+            vm_target += get_imp_ord1_rlc(min_rlc);
+        }
+
         vm_source = vm_start_of_page + srcoff_cnt1;
 
+        //io_log("vm_target=%x, vm_start_target_obj=%x, get_imp_ord1_rlc(min_rlc)=%x, addit=%x\n", vm_target, vm_start_target_obj, get_imp_ord1_rlc(min_rlc), addit);
         //io_log("!src=%02x, trg=%02x, srcoff=%04x, obj#=%02x, trgoff=%04x, addit=%d\n",
         //        min_rlc->nr_stype, min_rlc->nr_flags, srcoff_cnt1,
         //        min_rlc->r32_objmod, get_imp_ord1_rlc(min_rlc), addit);
@@ -606,8 +620,14 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
     }
 }
 
+
 void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target)
 {
+    unsigned short flat_cs;
+
+    asm volatile("movw %%cs, %%ax\n\t"
+                 "movw %%ax, %[flat_cs]\n\t"::[flat_cs] "m" (flat_cs));
+
     switch (type)
     {
         case 0x00: // 8-bit fixup
@@ -623,6 +643,8 @@ void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target)
             {
                 unsigned short *ptr_source;
                 unsigned long ptr = flat2sel(vm_target);
+
+                //io_log("^^^ vm_target=%x\n", vm_target);
 
                 ptr_source = (unsigned short *)vm_source;
                 *ptr_source = (unsigned short)(ptr >> 16);
@@ -652,11 +674,11 @@ void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target)
         case 0x06: // 16:32 pointer fixup
             {
                 unsigned short *ptr_source;
-                unsigned long ptr = flat2sel(vm_target);
 
                 ptr_source = (unsigned short *)vm_source;
-                *ptr_source++ = (unsigned short)(ptr >> 16);
                 *(unsigned long *)ptr_source = vm_target;
+                ptr_source += 2;
+                *ptr_source = flat_cs;
             }
             break;
 

@@ -1,4 +1,4 @@
-default 4
+default 5
 
 set ROOT   = (nd)
 set T      = $(ROOT)/tftpboot
@@ -92,10 +92,10 @@ module $(B)/simple_file_server -v 14
 #  module $(B)/os2/libuni.dll
   module $(B)/os2/utlapi.dll
 #  module $(B)/os2/pmwin.dll
-#  module $(B)/os2/pmmerge.dll
-#  module $(B)/os2/pmshapi.dll
+  module $(B)/os2/pmmerge.dll
+  module $(B)/os2/pmshapi.dll
   module $(B)/os2/cat.exe
-  module $(B)/os2/cut.exe
+#  module $(B)/os2/cut.exe
 #  module $(B)/os2/putmsg.exe
 #  module $(B)/os2/ansi.exe
 #  module $(B)/os2/sed.exe
@@ -114,7 +114,7 @@ module $(B)/simple_file_server -v 14
 #  module $(B)/os2/unzip.exe
   module $(B)/os2/minicmd.exe
   module $(B)/os2/mini33.exe
-  module $(B)/os2/argenv.exe
+#  module $(B)/os2/argenv.exe
 #  module $(B)/os2/scanenv.exe
 #  module $(B)/os2/edtname.exe
   module $(B)/os2/sort.exe

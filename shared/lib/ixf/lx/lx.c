@@ -644,7 +644,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
     //int object1;
     int addit = 0;
     int additive_size = 0;
-    int srcoff_cnt1;
+    short srcoff_cnt1;
     //int fixup_source_flag;
     int fixup_source;
     int fixup_offset;
@@ -701,6 +701,9 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
         */
         while (fixup_offset < pg_end_offs_fix)
         {
+            addit = 0;
+            additive_size = 0;
+
             //io_log("fixup_offset=%lx\n", fixup_offset);
             min_rlc = get_fixup_rec_tbl_obj(lx_exe_mod, fixup_offset);
             //io_log("min_rlc=%lx\n", min_rlc);
@@ -755,7 +758,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
 
                     if (min_rlc->nr_stype & NRCHAIN)
                     {
-                        unsigned short *srcoff = (unsigned short *)
+                        short *srcoff = (short *)
                             ((char *)min_rlc + 3 * 1 + mod_ord_size +
                             import_ord_size + additive_size);
 
@@ -764,7 +767,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
                             srcoff_cnt1 = srcoff[i];
                             io_log("mod_ord_size=%u, import_ord_size=%u, additive_size=%u\n",
                                    mod_ord_size, import_ord_size, additive_size);
-                            io_log("srcoff[%i]=%x, \n", i, srcoff[i]);
+                            io_log("srcoff[%i]=%x\n", i, srcoff[i]);
 
                             ixfModule->Fixups[*fixup_counter].flags = min_rlc->nr_stype & 0xf;
                             ixfModule->Fixups[*fixup_counter].SrcVmAddress = (void *)(vm_start_of_page + srcoff_cnt1);
@@ -832,7 +835,7 @@ int convert_imp_fixup_obj_lx(IXFModule *ixfModule,
 
                     if (min_rlc->nr_stype & NRCHAIN)
                     {
-                        unsigned short *srcoff = (unsigned short *)
+                        short *srcoff = (short *)
                             ((char *)min_rlc + 3 * 1 + mod_ord_size +
                             proc_name_off_size + additive_size);
 

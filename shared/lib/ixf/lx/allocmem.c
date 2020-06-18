@@ -1,5 +1,5 @@
 //
-// Memory allocation work in following logic:
+// Memory allocation works in the following logic:
 //   1. Get region of memory using l4dm_mem_open
 //   2. After memory opened we need to map pages
 // Map can be done page by page. Whole region can't be mapped if it large of L4_PAGESIZE

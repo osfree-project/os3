@@ -1,0 +1,13 @@
+--- kernel/fiasco/src/kern/shared/entry-ia32-ux-o.S	2020-05-16 03:12:41.540635820 +0300
++++ kernel/fiasco/src/kern/shared/entry-ia32-ux.S	2020-05-16 02:55:23.784611157 +0300
+@@ -179,7 +179,9 @@
+ 	CHECK_SANITY 60(%esp)		/* scratches ecx */
+ 	RESET_USER_SEGMENTS 60(%esp),in_cli  /* scratches ecx */
+ 
+-	addl	$4*2,%esp		/* Pop ds, es segment registers */
++	/* addl	$4*2,%esp */		/* Pop ds, es segment registers */
++        popl	%es			/* vs */
++        popl	%ds			/* vs */
+ 	popl	REG_GS
+ 	popl	%fs			/* Restore segment registers */
+ 	popa

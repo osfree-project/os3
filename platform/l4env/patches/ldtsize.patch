@@ -1,0 +1,18 @@
+--- kernel/fiasco/src/kern/shared/thread-ia32-amd64-o.cpp	2020-05-16 03:16:31.056641275 +0300
++++ kernel/fiasco/src/kern/shared/thread-ia32-amd64.cpp	2020-05-16 03:18:36.200644249 +0300
+@@ -730,11 +730,12 @@
+   // Allocate the memory if needed
+   // LDT maximum size is one page, anything else causes too much headache
+   if (!s->ldt_addr())
+-    s->ldt_addr(Mapped_allocator::allocator()->alloc(Config::PAGE_SHIFT));
++    s->ldt_addr(Mapped_allocator::allocator()->alloc(Config::PAGE_SHIFT + 4));
+ 
+-  if (entry_number * Cpu::Ldt_entry_size + size > Config::PAGE_SIZE)
++  // size is hardcoded
++  if (entry_number * Cpu::Ldt_entry_size + size > Config::PAGE_SIZE * 16)
+     {
+-      WARN("set_ldt: LDT size exceeds one page, not supported.");
++      WARN("set_ldt: LDT size exceeds 65536 bytes, not supported.");
+       return 0;
+     }
+ 

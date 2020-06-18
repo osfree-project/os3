@@ -61,7 +61,7 @@ trampoline(struct param *param)
 
   /* Prepare TIB GDT descriptor */
   desc.limit_lo = 0x30; desc.limit_hi = 0;
-  desc.acc_lo   = 0xF3; desc.acc_hi   = 0;
+  desc.acc_lo   = 0xf2; desc.acc_hi   = 0x04; // 32-bit
   desc.base_lo1 = base & 0xffff;
   desc.base_lo2 = (base >> 16) & 0xff;
   desc.base_hi  = base >> 24;
@@ -83,7 +83,7 @@ trampoline(struct param *param)
   io_log("stack top: %x\n", param->esp);
 
   /* We have changed the stack so it now points to our LX image. */
-  //enter_kdebug("debug");
+  enter_kdebug("debug");
   old_sel = tramp(argv, envp, hmod, tib_sel, param->eip);
 
   STKOUT
@@ -126,6 +126,18 @@ unsigned long ulActual;
 char *p = buf;
 int i;
 
+#pragma pack(1)
+
+typedef struct
+{
+    unsigned short limit;
+    unsigned long  base;
+} ldtr;
+
+ldtr ldt = {0};
+
+#pragma pack()
+
 APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadError)
 {
   // create LDT for tiled area
@@ -135,8 +147,8 @@ APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadE
 
       base = i * size;
 
-      desc.limit_lo = size & 0xffff; desc.limit_hi = size >> 16;
-      desc.acc_lo   = 0xF3;          desc.acc_hi   = 0;
+      desc.limit_lo = (size - 1) & 0xffff; desc.limit_hi = (size - 1) >> 16;
+      desc.acc_lo   = 0xf2;                desc.acc_hi   = 0;
       desc.base_lo1 = base & 0xffff;
       desc.base_lo2 = (base >> 16) & 0xff;
       desc.base_hi  = base >> 24;
@@ -162,6 +174,12 @@ APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadE
 
   io_log("eip: %x\n", s.ip);
   io_log("esp: %x\n", s.sp);
+
+  //asm volatile("sldt  %[ldt]\n\t"
+    //           ::[ldt] "m" (ldt));
+
+  //io_log("ldt.base=%lx\n", ldt.base);
+  //io_log("ldt.limit=%x\n", ldt.limit);
 
   param.eip = s.ip;
   param.esp = s.sp;
