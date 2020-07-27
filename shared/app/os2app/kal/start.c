@@ -83,7 +83,7 @@ trampoline(struct param *param)
   io_log("stack top: %x\n", param->esp);
 
   /* We have changed the stack so it now points to our LX image. */
-  enter_kdebug("debug");
+  //enter_kdebug("debug");
   old_sel = tramp(argv, envp, hmod, tib_sel, param->eip);
 
   STKOUT
@@ -243,9 +243,6 @@ APIRET CDECL KalStartApp(struct options *opts, char *pszLoadError, ULONG cbLoadE
   io_log("Successfully allocated stdio file descriptors.\n");
 
   ptid[0] = KalNativeID();
-
-  io_log("@@@ ptid[0].thread.id.task=%u, ptid[0].thread.id.lthread=%u\n",
-         ptid[0].thread.id.task, ptid[0].thread.id.lthread);
 
   // initialize TIDs array
   for (i = 1; i < MAX_TID; i++)

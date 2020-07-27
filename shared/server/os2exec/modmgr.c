@@ -66,7 +66,7 @@ extern void *_prog_img_start;
 struct module_rec modulehandles[1024];
 
 slist_t *next_slist (slist_t *s);
-void getline (char **from, char *to);
+void get_line (char **from, char *to);
 int dl_get_funcs (int *numentries, IXFMODULEENTRY **entries);
 int lcase(char* dest, const char* src);
 
@@ -221,7 +221,7 @@ next_slist (slist_t *s)
 }
 
 void
-getline (char **from, char *to)
+get_line (char **from, char *to)
 {
   char *p, *q = to;
 
@@ -254,7 +254,7 @@ dl_get_funcs (int *numentries, IXFMODULEENTRY **entries)
 
   p = (char *)addr;
 
-  getline(&p, line);
+  get_line(&p, line);
 
   n = atol(line);
 
@@ -264,7 +264,7 @@ dl_get_funcs (int *numentries, IXFMODULEENTRY **entries)
 
   for (i = 0; i < n; i++)
   {
-    getline(&p, line);
+    get_line(&p, line);
     sscanf(line, "%llx %s", &funcaddr, s);
     funcname = (char *)malloc(strlen(s) + 1);
     if (!funcname) return 1;
@@ -1108,7 +1108,7 @@ unsigned long ModQueryProcAddr(unsigned long hmod,
 
   if (ordinal > 0)
   { // Search by ordinal
-    int i;
+    //int i;
     //io_log("ixfModule=%x\n", ixfModule);
     //io_log("ordinal=%u\n", ordinal);
     //io_log("ixfModule->Entries=%x\n", ixfModule->Entries);
@@ -1245,9 +1245,9 @@ void ModLinkModule (IXFModule *ixfModule, unsigned long *phmod)
       io_log("src=%x, dst=%x\n",(ixfModule->Fixups[imports_counter].SrcAddress) , (ixfModule->Fixups[imports_counter].ImportEntry.Address));
     }
 
-    relative_jmp = (ixfModule->Fixups[imports_counter].ImportEntry.Address) - (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress) - 4;
-    absolute_jmp = ixfModule->Fixups[imports_counter].ImportEntry.Address;
-    src_off = ixfModule->Fixups[imports_counter].SrcVmAddress;
+    relative_jmp = (int)((ixfModule->Fixups[imports_counter].ImportEntry.Address) - (unsigned long)(ixfModule->Fixups[imports_counter].SrcAddress) - 4);
+    absolute_jmp = (int)ixfModule->Fixups[imports_counter].ImportEntry.Address;
+    src_off = (unsigned long)ixfModule->Fixups[imports_counter].SrcVmAddress;
 
     switch (ixfModule->Fixups[imports_counter].flags)
     {

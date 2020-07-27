@@ -41,7 +41,7 @@ void *allocmem(unsigned long long area,
       return NULL;
     }
 
-    io_log("alloc dataspace %u, size %u at 0x%x\n", (*ds).ds.id, size, addr);
+    //io_log("alloc dataspace %u, size %u at 0x%x\n", (*ds).ds.id, size, addr);
     return addr;
 
     base = base;

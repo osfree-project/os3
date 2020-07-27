@@ -71,6 +71,7 @@ run B 480
 runserver B 480
 segment_gdt_get_entry_offset T
 segment_gdt_set T
+segment_ldt_set T
 set B 2400
 skiplist D 8
 strupr T

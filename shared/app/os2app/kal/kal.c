@@ -27,7 +27,7 @@
 #include <os3/fs.h>
 #include <os3/app.h>
 
-#include <l4/util/util.h>
+//#include <l4/util/util.h>
 
 /* libc includes*/
 #include <unistd.h>
@@ -648,11 +648,14 @@ long attach_module (ULONG hmod, unsigned long long area)
       flags |= DATASPACE_WRITE;
     }
 
+#ifdef __l4env__
     if (! rc)
       io_log("ds %u attached at %x, area %x, flags %x\n",
              ds.ds.id, addr, area, flags);
     //else if (rc != -L4_EUSED)
-    else if (rc != ERROR_ALREADY_USED)
+    else
+#endif
+    if (rc != ERROR_ALREADY_USED)
     {
       io_log("attach_ds_area returned %d\n", rc);
       break;
@@ -684,8 +687,10 @@ long attach_module (ULONG hmod, unsigned long long area)
         i = (unsigned long)addr >> 16;
 
         base = i << 16;
+#ifdef __l4env__
         io_log("ds %x @ %x, size %u\n", ds.ds.id, addr, size);
         io_log("base=%x\n", base);
+#endif
 
         desc.limit_lo = (size - 1) & 0xffff; desc.limit_hi = (size - 1) >> 16;
         desc.acc_lo   = acc;           desc.acc_hi   = acc2;
@@ -714,8 +719,10 @@ long attach_module (ULONG hmod, unsigned long long area)
     }
     else
     {
+#ifdef __l4env__
       io_log("WARNING: trying to attach dataspace %u where %u is attached\n",
              ds.ds.id, area_ds.ds.id);
+#endif
       rc = NO_ERROR;
       break;
     }
@@ -2775,14 +2782,8 @@ KalGetTIDNative(l4_os3_thread_t id, TID *pthid)
   //rc = os2server_dos_GetTIDNative_call(&os2srv, &id, pthid,  &env);
   //rc = CPClientGetTIDNative(&id, pthid);
 
-  io_log("$$$ id.thread.id.task=%u, id.thread.id.lthread=%u\n",
-         id.thread.id.task, id.thread.id.lthread);
-
   for (i = 0; i < MAX_TID; i++)
   {
-    io_log("$$$ ptid[%u].thread.id.task=%u, ptid[%u].thread.id.lthread=%u\n",
-           i, ptid[i].thread.id.task, i, ptid[i].thread.id.lthread);
-
     if ( ThreadEqual(ptid[i], id) )
       break;
   }

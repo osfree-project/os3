@@ -5,6 +5,13 @@
 #include <os3/segment.h>
 
 extern "C" void
+segment_ldt_set(void *desc, unsigned int size,
+                unsigned int entry_number_start,
+                l4_os3_thread_t tid)
+{
+}
+
+extern "C" void
 segment_gdt_set(void *desc, unsigned int size,
                 unsigned int entry_number_start,
                 l4_os3_thread_t tid)

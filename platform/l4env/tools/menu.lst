@@ -98,14 +98,14 @@ module $(B)/simple_file_server -v 14
 #  module $(B)/os2/cut.exe
 #  module $(B)/os2/putmsg.exe
 #  module $(B)/os2/ansi.exe
-#  module $(B)/os2/sed.exe
+  module $(B)/os2/sed.exe
   module $(B)/os2/awk.exe
   module $(B)/os2/makeini.exe
   module $(B)/os2/vp.exe
 #  module $(B)/os2/fp.exe
 #  module $(B)/os2/fc.exe
 # module $(B)/os2/more.exe
-  module $(B)/os2/file-open-test.exe
+#  module $(B)/os2/file-open-test.exe
   module $(B)/os2/ver.exe
 #  module $(B)/os2/comp.exe
 #  module $(B)/os2/wasm.exe

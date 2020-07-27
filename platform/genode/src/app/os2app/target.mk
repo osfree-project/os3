@@ -6,7 +6,7 @@ SRC_CC = main.cc kal/thread2.cc
 SRC_C  = initdone.c api/api.c kal/thread.c \
          kal/util.c kal/start.c kal/kal.c kal/dl.c
 # disable dead code elimination
-LIBS = base libc compat os2srv os2fs os2exec
+LIBS = base libc compat os2srv os2fs os2exec handle
 
 ifeq ($(filter-out $(SPECS),x86_32),)
 	SRC_C += kal/arch/x86_32/tramp.c
