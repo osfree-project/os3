@@ -17,11 +17,13 @@ build {
   core
   init
   timer
+  lib/libc
+  lib/libm
   lib/compat
   lib/memmgr
   lib/handle
-  lib/ixf/lx
-  lib/ixf/ne
+  lib/lx
+  lib/ne
   lib/vfs
   server/tar_rom
   server/os2fs
@@ -122,6 +124,8 @@ foreach file ${filelist} {
 
 exec sh -c "cd bin/file/system; ln -sf ../../kal.map"
 exec sh -c "cd bin; tar cfh os2.tar file"
+exec sh -c "cd bin; ln -sf lx.lib.so lx.ixf"
+exec sh -c "cd bin; ln -sf ne.lib.so ne.ixf"
 
 #
 # Boot image

@@ -11,6 +11,7 @@
 
 /* Genode includes */
 #include <base/log.h>
+#include <base/env.h>
 #include <base/heap.h>
 #include <base/attached_rom_dataspace.h>
 #include <base/attached_ram_dataspace.h>
@@ -27,10 +28,10 @@
 #include "genode_env.h"
 #include "api.h"
 
-Genode::Env *_env_ptr = NULL;
-Genode::Allocator *_alloc = NULL;
-
 extern "C" {
+
+Genode::Env *env_ptr = NULL;
+Genode::Allocator *alloc_ptr = NULL;
 
 int init(struct options *opts);
 void done(void);

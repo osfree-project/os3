@@ -7,7 +7,7 @@
 
 /* Genode includes */
 #include <base/allocator.h>
-#include <base/lock.h>
+#include <base/mutex.h>
 
 /* local includes */
 #include <genode_env.h>
@@ -19,9 +19,9 @@ LockInit(l4_os3_lock_t **lock, ULONG n)
 
     try
     {
-        **lock = new (alloc) Genode::Lock(n ?
-            Genode::Cancelable_lock::LOCKED :
-            Genode::Cancelable_lock::UNLOCKED);
+        **lock = new (alloc) Genode::Mutex();
+        (n) ? ((Genode::Mutex *)(*lock))->acquire() :
+              ((Genode::Mutex *)(*lock))->release();
     }
     catch (...)
     {
@@ -36,17 +36,17 @@ LockDone(l4_os3_lock_t *lock)
 {
     Genode::Allocator &alloc = genode_alloc();
 
-    destroy(alloc, (Genode::Lock *)(*lock));
+    destroy(alloc, (Genode::Mutex *)(*lock));
 }
 
 extern "C" void
 LockLock(l4_os3_lock_t *lock)
 {
-    ((Genode::Lock *)(*lock))->lock();
+    ((Genode::Mutex *)(*lock))->acquire();
 }
 
 extern "C" void
 LockUnlock(l4_os3_lock_t *lock)
 {
-    ((Genode::Lock *)(*lock))->unlock();
+    ((Genode::Mutex *)(*lock))->release();
 }

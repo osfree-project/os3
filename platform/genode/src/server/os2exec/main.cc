@@ -13,6 +13,7 @@
 
 /* Genode includes */
 #include <base/log.h>
+#include <base/env.h>
 #include <base/heap.h>
 #include <base/capability.h>
 #include <base/attached_ram_dataspace.h>
@@ -34,10 +35,10 @@
 
 #define OPENFLAG_EXEC 1
 
-Genode::Env *_env_ptr = NULL;
-Genode::Allocator *_alloc = NULL;
-
 extern "C" {
+
+Genode::Env *env_ptr = NULL;
+Genode::Allocator *alloc_ptr = NULL;
 
 struct options
 {
@@ -46,7 +47,7 @@ struct options
     char *kal_map;
 };
 
-l4_os3_thread_t os2srv;
+//l4_os3_thread_t os2srv;
 
 extern l4_os3_thread_t fs;
 

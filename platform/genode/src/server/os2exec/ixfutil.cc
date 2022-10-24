@@ -25,7 +25,7 @@ extern "C" int
 ixfCopyModule(IXFModule *ixfDst, IXFModule *ixfSrc)
 {
   Attached_ram_dataspace *_ds;
-  Allocator &alloc = genode_alloc();
+  Allocator &alloc_ptr = genode_alloc();
   Env &env = genode_env();
   size_t _size;
   IXFSYSDEP *sysdepSrc, *sysdepDst;
@@ -45,7 +45,7 @@ ixfCopyModule(IXFModule *ixfDst, IXFModule *ixfSrc)
   for (i = 0, r = 0, s0 = sysdepSrc->seclist;
        s0; i++, r = s, s0 = s0->next)
   {
-    s = new (alloc) slist_t;
+    s = new (alloc_ptr) slist_t;
 
     if (i == 0) // 1st loop iteration
       sysdepDst->seclist = s;
@@ -55,7 +55,7 @@ ixfCopyModule(IXFModule *ixfDst, IXFModule *ixfSrc)
       s->next = 0;
     }
 
-    section = new (alloc) l4_os3_section_t;
+    section = new (alloc_ptr) l4_os3_section_t;
     s->section = section;
 
     memcpy(section, s0->section, sizeof(l4_os3_section_t));
@@ -67,7 +67,7 @@ ixfCopyModule(IXFModule *ixfDst, IXFModule *ixfSrc)
     if (! _addr)
       return 8;
 
-    _ds = new (alloc) Attached_ram_dataspace(env.ram(), env.rm(), _size);
+    _ds = new (alloc_ptr) Attached_ram_dataspace(env.ram(), env.rm(), _size);
     //_ds.construct(env.ram(), env.rm(), _size);
 
     if (! _ds)
@@ -76,7 +76,7 @@ ixfCopyModule(IXFModule *ixfDst, IXFModule *ixfSrc)
     memcpy(_ds->local_addr<char>(), _addr, _size);
     env.rm().detach(_addr);
     //_ds.destruct();
-    //destroy(alloc, _ds);
+    //destroy(alloc_ptr, _ds);
 
     if (rc)
       io_log("dataspace copy rc=%d\n", rc);

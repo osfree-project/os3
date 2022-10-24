@@ -7,8 +7,8 @@
 /* local includes */
 #include "genode_env.h"
 
-extern Genode::Allocator *_alloc;
-extern Genode::Env *_env_ptr;
+extern Genode::Allocator *alloc;
+extern Genode::Env *env_ptr;
 
 extern "C" int main(void);
 

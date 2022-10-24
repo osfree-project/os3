@@ -1,4 +1,5 @@
 /* Genode includes */
+#include <base/env.h>
 #include <base/heap.h>
 #include <util/xml_node.h>
 #include <libc/component.h>
@@ -18,10 +19,10 @@
 
 #include <genode_env.h>
 
-Genode::Env *_env_ptr = NULL;
-Genode::Allocator *_alloc = NULL;
-
 extern "C" {
+
+Genode::Env *env_ptr = NULL;
+Genode::Allocator *alloc_ptr = NULL;
 
 /* OS/2 server id        */
 l4_os3_thread_t os2srv;
