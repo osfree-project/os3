@@ -20,6 +20,7 @@
 
 /* libc includes */
 #include <stdlib.h>
+#include <string.h>
 
 #include <exe.h>
 

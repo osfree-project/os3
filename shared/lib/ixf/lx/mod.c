@@ -24,6 +24,9 @@
 #include <os3/cfgparser.h>
 #include <os3/modmgr.h>
 
+/* libc includes */
+#include <string.h>
+
 int LXLoadHeader(struct LX_module *lx_mod);
 int LXLoadLoaderSection(struct LX_module *lx_mod);
 int LXLoadFixupSection(struct LX_module *lx_mod);
@@ -365,25 +368,13 @@ struct r32_rlc *get_fixup_rec_tbl_obj(struct LX_module *lx_mod, int offs)
 /* Get's a name (pascal string) from Import Module Table at index in mod_idx.*/
 char *get_imp_mod_name(struct LX_module *lx_mod, int mod_idx)
 {
-    char *mod_name, *p;
+    char *mod_name;
     long i;
 
     int offs_mod_table = lx_mod->lx_head_e32_exe->e32_impmod -
         lx_mod->lx_head_e32_exe->e32_fpagetab;
 
     mod_name = &lx_mod->fixup_section[offs_mod_table];
-
-    /* io_log("mod_idx=%u, mod_name=", mod_idx);
-
-    for (p = mod_name; *p; p++)
-    {
-        if (*p < 9)
-            io_log("%c", *p + 0x30);
-        else
-            io_log("%c", *p);
-    }
-
-    io_log("\n"); */
 
     for (i = 0;
          i != (mod_idx-1);
@@ -412,7 +403,7 @@ char *get_imp_proc_name(struct LX_module * lx_mod, int proc_idx)
 {
     int offs_imp_proc_table = lx_mod->lx_head_e32_exe->e32_impproc -
         lx_mod->lx_head_e32_exe->e32_fpagetab;
-    int c_len = lx_mod->fixup_section[offs_imp_proc_table + proc_idx];
+    //int c_len = lx_mod->fixup_section[offs_imp_proc_table + proc_idx];
 
     /* First entry is a null string, size zero. Skip it.*/
     if (proc_idx == 0)

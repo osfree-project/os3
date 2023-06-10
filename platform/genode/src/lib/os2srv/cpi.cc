@@ -21,6 +21,9 @@
 /* local includes */
 #include "genode_env.h"
 
+Genode::Env *env_ptr;
+Genode::Allocator *alloc_ptr;
+
 using namespace OS2::Cpi;
 
 static Connection *cpi;
@@ -67,6 +70,13 @@ APIRET CPClientInit(l4_os3_thread_t *thread)
     *thread = cpi;
 
     return NO_ERROR;
+}
+
+extern "C"
+void CPClientInitEnv(Genode::Env &env,
+                     Genode::Allocator &alloc)
+{
+    init_genode_env(env, alloc);
 }
 
 extern "C"

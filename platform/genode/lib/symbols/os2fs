@@ -10,6 +10,7 @@ FSClientFindNext T
 FSClientForceDelete T
 FSClientGetDriveMap T
 FSClientInit T
+FSClientInitEnv T
 FSClientOpenL T
 FSClientQueryFHState T
 FSClientQueryFileInfo T

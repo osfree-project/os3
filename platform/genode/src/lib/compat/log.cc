@@ -4,12 +4,12 @@
 #include <os3/io.h>
 
 /* Genode includes */
-#include <base/snprintf.h>
 #include <base/log.h>
 #include <util/string.h>
 
 /* libc includes */
 #include <stdarg.h>
+#include <stdio.h>
 
 using namespace Genode;
 
@@ -21,12 +21,8 @@ void io_log(const char *chrFormat, ...)
     char *s = (char *)buf;
     int len;
 
-    String_console sc(buf, sizeof(buf));
-
     va_start(arg_ptr, chrFormat);
-
-    sc.vprintf(chrFormat, arg_ptr);
-
+    vsprintf(buf, chrFormat, arg_ptr);
     len = strlen((const char *)s);
 
     // strip a line feed at the end

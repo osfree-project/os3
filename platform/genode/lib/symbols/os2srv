@@ -17,6 +17,7 @@ CPClientGetPIB T
 CPClientGetPID T
 CPClientGetTIB T
 CPClientInit T
+CPClientInitEnv T
 CPClientNewTIB T
 CPClientOpenEventSem T
 CPClientQueryCp T

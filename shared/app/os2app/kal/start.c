@@ -53,7 +53,7 @@ trampoline(struct param *param)
 
   unsigned long     base;
   struct desc       desc;
-  int               i;
+  //int               i;
 
   /* TIB base */
   base = (unsigned long)param->tib;

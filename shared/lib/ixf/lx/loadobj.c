@@ -36,6 +36,7 @@
 
 /* libc includes */
 #include <stdlib.h>
+#include <string.h>
 
 //extern struct t_mem_area os2server_root_mem_area;
 
@@ -445,7 +446,7 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
 
     short srcoff_cnt1;
     int cnt;
-    int addit = 0;
+    //int addit = 0;
     int additive_size = 0;
     int object_size;
     int offs_to_entry_tbl;
@@ -580,8 +581,8 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
                 if (min_rlc->nr_flags & 0x20) // 32-bit additive field
                     additive_size = 4;
 
-                if (additive_size)
-                    addit = get_additive_rlc(min_rlc);
+                //if (additive_size)
+                //    addit = get_additive_rlc(min_rlc);
 
                 if (min_rlc->nr_stype & NRCHAIN)
                 {
@@ -623,7 +624,7 @@ void apply_internal_entry_table_fixup(struct LX_module *lx_exe_mod, struct r32_r
 
 void apply_fixup(int type, unsigned long vm_source, unsigned long vm_target)
 {
-    unsigned short flat_cs;
+    unsigned short flat_cs = 0;
 
     asm volatile("movw %%cs, %%ax\n\t"
                  "movw %%ax, %[flat_cs]\n\t"::[flat_cs] "m" (flat_cs));

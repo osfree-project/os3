@@ -12,6 +12,7 @@
 /* osFree OS/2 personality internal */
 #include <os3/allocmem.h>
 #include <os3/dataspace.h>
+#include <os3/io.h>
 #include <os3/rm.h>
 
 void *allocmem(unsigned long long area,

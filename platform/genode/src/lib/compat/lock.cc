@@ -4,6 +4,7 @@
 
 /* osFree internal */
 #include <os3/lock.h>
+#include <os3/io.h>
 
 /* Genode includes */
 #include <base/allocator.h>
@@ -20,8 +21,9 @@ LockInit(l4_os3_lock_t **lock, ULONG n)
     try
     {
         **lock = new (alloc) Genode::Mutex();
-        (n) ? ((Genode::Mutex *)(*lock))->acquire() :
-              ((Genode::Mutex *)(*lock))->release();
+
+        if (n)
+            ((Genode::Mutex *)(*lock))->acquire();
     }
     catch (...)
     {

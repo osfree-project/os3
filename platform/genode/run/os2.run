@@ -142,6 +142,8 @@ set boot_modules {
   ld.lib.so
   libc.lib.so
   libm.lib.so
+  lx.lib.so
+  ne.lib.so
   vfs.lib.so
   compat.lib.so
   memmgr.lib.so

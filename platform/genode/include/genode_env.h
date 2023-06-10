@@ -5,8 +5,8 @@
 #include <base/allocator.h>
 #include <base/component.h>
 
-extern "C" Genode::Env *env_ptr;
-extern "C" Genode::Allocator *alloc_ptr;
+extern Genode::Env *env_ptr;
+extern Genode::Allocator *alloc_ptr;
 
 inline Genode::Env &genode_env()
 {

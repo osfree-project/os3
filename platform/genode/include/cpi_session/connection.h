@@ -8,11 +8,10 @@ namespace OS2::Cpi { struct Connection; }
 
 struct OS2::Cpi::Connection : Genode::Connection<Session>, Session_client
 {
-	Connection(Genode::Env &env, char const *label)
+	Connection(Genode::Env &env, Label const &label   = Label())
 	:
 		/* create session */
-		Genode::Connection<OS2::Cpi::Session>(env, session(env.parent(),
-		                                      "ram_quota=6K, cap_quota=4, label=\"%s\"", label)),
+		Genode::Connection<OS2::Cpi::Session>(env, label, Ram_quota { 6 * 1024 }, Args()),
 		/* initialize RPC interface */
 		Session_client(cap()) { }
 };

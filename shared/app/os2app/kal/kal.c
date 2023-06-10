@@ -42,6 +42,8 @@
 #define SEMTYPE_MUTEX    1
 #define SEMTYPR_MUXWAIT  2
 
+//#pragma GCC optimize("O0")
+
 /* Semaphore handle table pointer */
 HANDLE_TABLE *htSem;
 
@@ -54,6 +56,17 @@ typedef struct _Jft_Entry
   struct _RTL_HANDLE *pNext;
   HFILE sfn;      /* system file number (global file handle) */
 } Jft_Entry;
+
+/*struct
+{
+    char *name;
+    void *addr;
+} funcmap[] = {
+    { "KalRead",    &KalRead  },
+    { "KalWrite",   &KalWrite },
+};*/
+
+//volatile void *addrx = &KalRead;
 
 /* Handle table element           */
 /* typedef struct _SEM
@@ -205,17 +218,17 @@ KalOpenL (PSZ pszFileName,
 
   char s[10] = "";  /*Create device letter with colon. */
   s[0] = disknum_to_char(drv);
-  s[1] = 0;
-  strncat((char*)dir_buf_out, s, 1);
+  s[1] = '\0';
+  strcat((char*)dir_buf_out, s);
 
   /*  .\config.sys               ':' */
   if(isRelativePath(path) ) {/* Add working directory. */
 
-      strncat((char*)dir_buf_out, ":\\", 2);
+      strncat((char*)dir_buf_out, ":\\", 3);
       strncat((char*)dir_buf_out, (char*)dir_buf2, dirbuf_len2);
       if((strcmp((char*)dir_buf2,"")!=0) && isRelativePath((char*)dir_buf2))
-          strncat((char*)dir_buf_out, "\\", 1);
-      strncat((char*)dir_buf_out, path, strlen(path));
+          strncat((char*)dir_buf_out, "\\", 2);
+      strcat((char*)dir_buf_out, path);
       /* Complete path for filename is now inside dir_buf_out.*/
   }
 
@@ -227,14 +240,14 @@ KalOpenL (PSZ pszFileName,
       /*Is working directory going to be added?*/
       if( (isRelativePath((char*)path)) ) { 
           if((strcmp((char*)dir_buf2,"")!=0) && isRelativePath((char*)dir_buf2)) {
-              strncat((char*)dir_buf_out, "\\", 1);
-              strncat((char*)dir_buf_out, 
+              strncat((char*)dir_buf_out, "\\", 2);
+              strncat((char*)dir_buf_out,
                           (char*)dir_buf2, dirbuf_len2);/*No working directory!*/
               if(isRelativePath((char*)path))
-                  strncat((char*)dir_buf_out, "\\", 1);
+                  strncat((char*)dir_buf_out, "\\", 2);
           }
       }
-      strncat((char*)dir_buf_out, path, strlen(path));
+      strcat((char*)dir_buf_out, path);
       /* Complete path for filename is now inside dir_buf_out.*/
   }
 
@@ -283,7 +296,7 @@ KalFSCtl (PVOID pData,
           ULONG method)
 {
   Jft_Entry *jft_entry;
-  HFILE sfn;
+  //HFILE sfn;
   APIRET  rc = NO_ERROR;
 
   KalEnter();
@@ -294,7 +307,7 @@ KalFSCtl (PVOID pData,
     return ERROR_INVALID_HANDLE;
   }
 
-  sfn = jft_entry->sfn;
+  //sfn = jft_entry->sfn;
 
   // ...
 
@@ -304,7 +317,7 @@ KalFSCtl (PVOID pData,
 }
 
 
-APIRET CDECL // __attribute__((hot))
+APIRET CDECL
 KalRead (HFILE hFile, PVOID pBuffer,
          ULONG cbRead, PULONG pcbActual)
 {
@@ -710,7 +723,7 @@ long attach_module (ULONG hmod, unsigned long long area)
         // touch page ro
         //if ( (sect.flags & OBJALIAS16) || (sect.flags & OBJBIGDEF) )
         {
-            volatile char *p = base;
+            volatile char *p = (char *)base;
 
             for (l = 0, p = (char *)base; l < size; l++, p++)
                 *p;

@@ -176,7 +176,10 @@ unsigned long CfgParseLine(char line[], int len, int lineno)
     if (count == strlen(type[i].name))
     {
       count++;
-      strcpy(line,line + count);
+
+      //strcpy(line, line + count);
+      memcpy(line, line + count, count);
+
       len -= count;
 
       if ( !(pc = (char *)malloc((size_t)len + 1)) )
@@ -209,7 +212,10 @@ unsigned long CfgParseLine(char line[], int len, int lineno)
     if (count == strlen(options_list[i]) && toupper(line[count]) == '=')
     {
       count++;
-      strcpy(line, line + count);
+
+      //strcpy(line, line + count);
+      memcpy(line, line + count, count);
+
       len -= count;
 
       switch (i)

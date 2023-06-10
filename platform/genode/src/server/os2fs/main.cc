@@ -28,10 +28,13 @@
 #include "genode_env.h"
 #include "api.h"
 
-extern "C" {
-
 Genode::Env *env_ptr = NULL;
 Genode::Allocator *alloc_ptr = NULL;
+
+extern "C" {
+
+void CPClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void CompatInitEnv(Genode::Env &env, Genode::Allocator &alloc);
 
 int init(struct options *opts);
 void done(void);
@@ -515,7 +518,11 @@ public:
     :
     Genode::Root_component<Cpi_session_component>(env.ep(),
                                                   alloc),
-    _env(env) { init_genode_env(env, alloc); }
+    _env(env) {
+        init_genode_env(env, alloc);
+        CPClientInitEnv(env, alloc);
+        CompatInitEnv(env, alloc);
+    }
 };
 
 struct OS2::Cpi::Rom_root : public Genode::Root_component<Rom_session_component>

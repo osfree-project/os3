@@ -1,3 +1,4 @@
+CompatInitEnv T
 CfgCleanup T
 CfgGetenv T
 CfgInitOptions T

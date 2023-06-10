@@ -731,7 +731,7 @@ APIRET CPOpenEventSem(l4_os3_thread_t thread,
 
     for (sem = (SEM *)(htSem.pFirstHandle); sem; sem = sem->pNext)
     {
-      if (sem->szName && !strcmp(sem->szName, pszName))
+      if (!strcmp(sem->szName, pszName))
         break;
     }
 

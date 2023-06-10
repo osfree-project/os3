@@ -19,14 +19,19 @@
 
 #include <genode_env.h>
 
-extern "C" {
-
 Genode::Env *env_ptr = NULL;
 Genode::Allocator *alloc_ptr = NULL;
+
+extern "C" {
 
 /* OS/2 server id        */
 l4_os3_thread_t os2srv;
 l4_os3_thread_t fs;
+
+void CPClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void FSClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void ExcClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void CompatInitEnv(Genode::Env &env, Genode::Allocator &alloc);
 
 int init(struct options *opts);
 void done(void);
@@ -76,6 +81,12 @@ struct OS2::App::Main
 
         /* init environment and allocator variables */
         init_genode_env(env, heap);
+        CPClientInitEnv(env, heap);
+        ExcClientInitEnv(env, heap);
+        FSClientInitEnv(env, heap);
+        CompatInitEnv(env, heap);
+
+        env_ptr = &env; alloc_ptr = &heap;
 
         /* parse options */
         parse_options(config.xml(), &opts);

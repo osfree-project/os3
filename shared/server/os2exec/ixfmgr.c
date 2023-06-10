@@ -16,6 +16,7 @@
 
 /* libc includes */
 #include <stdlib.h>
+#include <string.h>
 
 unsigned long ixfCopyModule(IXFModule *dst, IXFModule *src);
 

@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* struct t_mem_area root_area; */
+struct t_mem_area root_area;
 
 unsigned long int round_up_to_4KiB(unsigned long int i);
 

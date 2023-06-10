@@ -25,10 +25,10 @@
 #include "genode_env.h"
 #include "api.h"
 
-extern "C" {
-
 Genode::Env *env_ptr = NULL;
 Genode::Allocator *alloc_ptr = NULL;
+
+extern "C" {
 
 struct options
 {
@@ -37,6 +37,10 @@ struct options
   char *bootdrive;
   char fprov[20];
 };
+
+void AppClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void CPClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void CompatInitEnv(Genode::Env &env, Genode::Allocator &alloc);
 
 //int sysinit (cfg_opts *options);
 int init(struct options *opts);
@@ -352,7 +356,12 @@ public:
     :
     Genode::Root_component<Session_component>(env.ep(),
                                               alloc),
-    _env(env) { init_genode_env(env, alloc); }
+    _env(env) {
+        init_genode_env(env, alloc);
+        AppClientInitEnv(env, alloc);
+        CPClientInitEnv(env, alloc);
+        CompatInitEnv(env, alloc);
+    }
 };
 
 struct OS2::Cpi::Main

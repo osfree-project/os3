@@ -1824,11 +1824,11 @@ APIRET FSQueryPathInfo(PSZ pszPathName,
             strcpy(*pInfo, fname);
             s = *pInfo;
 
-            if (fname == NULL)
+            /*if (fname == NULL)
             {
                 *s = '\0';
                 return NO_ERROR;
-            }
+            }*/
 
             p = q = fname;
 

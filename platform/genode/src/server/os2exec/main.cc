@@ -35,10 +35,10 @@
 
 #define OPENFLAG_EXEC 1
 
-extern "C" {
-
 Genode::Env *env_ptr = NULL;
 Genode::Allocator *alloc_ptr = NULL;
+
+extern "C" {
 
 struct options
 {
@@ -58,11 +58,15 @@ extern void         *shared_memory_base;
 extern unsigned long shared_memory_size;
 extern unsigned long long shared_memory_area;
 
+void CPClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void FSClientInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+void CompatInitEnv(Genode::Env &env, Genode::Allocator &alloc);
+
 int init(struct options *opts);
 void done(void);
 
 /* Root mem area for memmgr */
-struct t_mem_area root_area;
+extern struct t_mem_area root_area;
 
 void reserve_regions(void)
 {
@@ -325,7 +329,12 @@ public:
 	     Genode::Allocator &alloc)
 	:
 		Genode::Root_component<Session_component>(env.ep(), alloc),
-	 _env(env) { init_genode_env(env, alloc); }
+	 _env(env) {
+	     init_genode_env(env, alloc);
+	     CPClientInitEnv(env, alloc);
+	     FSClientInitEnv(env, alloc);
+	     CompatInitEnv(env, alloc);
+	 }
 };
 
 struct OS2::Cpi::Main

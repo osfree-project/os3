@@ -20,6 +20,16 @@
 /* local includes */
 #include "genode_env.h"
 
+Genode::Env *env_ptr;
+Genode::Allocator *alloc_ptr;
+
+extern "C"
+void CompatInitEnv(Genode::Env &env,
+                   Genode::Allocator &alloc)
+{
+    init_genode_env(env, alloc);
+}
+
 extern "C"
 long DataspaceAlloc(l4_os3_dataspace_t *ds, ULONG flags,
                     l4_os3_cap_idx_t dm, ULONG size)

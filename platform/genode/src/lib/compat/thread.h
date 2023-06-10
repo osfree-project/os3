@@ -31,8 +31,6 @@ public:
         _flags = flags;
         _data = data;
 
-        start();
-
         if (_flags & THREAD_SYNC)
         {
             _term_wait.up();

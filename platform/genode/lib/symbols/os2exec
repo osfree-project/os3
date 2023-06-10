@@ -8,6 +8,7 @@ ExcClientGetSect T
 ExcClientGetSharedMem T
 ExcClientIncrementSharedMemRefcnt T
 ExcClientInit T
+ExcClientInitEnv T
 ExcClientLoad T
 ExcClientMapDataspace T
 ExcClientOpen T

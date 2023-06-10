@@ -2,7 +2,7 @@ include $(REP_DIR)/mk/osfree.mk
 
 CC_CXX_WARN_STRICT =
 SHARED_LIB = yes
-SRC_C = debug.c fixup.c load.c \
+SRC_C = debug.c fixup.c load.c unpack.c \
         loadobj.c lx.c mod.c allocmem.c
 LIBS = base libc compat
 

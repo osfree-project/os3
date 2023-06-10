@@ -250,7 +250,7 @@ int LXLoadObjects(IXFModule *ixfModule)
 #endif
         // Register allocated area
         //alloc_mem_area(&root_area, (void *)kod_obj->o32_base, kod_obj->o32_size);
-        alloc_mem_area(&root_area, (void *)kod_obj->o32_reserved, kod_obj->o32_size);
+        alloc_mem_area(&root_area, (void *)(unsigned long)kod_obj->o32_reserved, kod_obj->o32_size);
 
         //if (vm_code_obj == MAP_FAILED)
         if (! vm_code_obj)
